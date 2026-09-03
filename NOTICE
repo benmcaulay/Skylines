@@ -1,0 +1,28 @@
+Skylines — third-party data and code notices
+============================================
+
+The MIT licence in LICENSE covers the source of Skylines. Bundled reference
+data and vendored code keep their own terms.
+
+data/ref.json
+-------------
+Airport and airline records derived from the OpenFlights database:
+https://github.com/jpatokal/openflights
+
+Published under the Open Database License (ODbL) v1.0:
+https://opendatacommons.org/licenses/odbl/1-0/
+
+Attribution required. Airport and airline data (c) OpenFlights contributors,
+made available under the ODbL. Original airport records are sourced by
+OpenFlights from OurAirports (public domain).
+
+data/world.json
+---------------
+Country geometry from Natural Earth (https://www.naturalearthdata.com/),
+processed via world-atlas (https://github.com/topojson/world-atlas).
+Natural Earth is in the public domain.
+
+vendor/supabase.js
+------------------
+supabase-js v2.114.0, MIT licensed.
+Copyright (c) Supabase. https://github.com/supabase/supabase-js

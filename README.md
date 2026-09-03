@@ -132,9 +132,13 @@ python3 build.py path/to/export.csv
 Anything you bundle this way is visible to everyone who opens the site or reads
 the repo, so keep real personal history out of it.
 
-## Credits
+## Licence and credits
 
-Airport, airline and route reference data from the
-[OpenFlights database](https://github.com/jpatokal/openflights) (ODbL).
-Country geometry from [Natural Earth](https://www.naturalearthdata.com/) via
-[world-atlas](https://github.com/topojson/world-atlas) (public domain).
+Skylines is MIT licensed. Bundled data keeps its own terms — see [NOTICE](NOTICE).
+
+Airport and airline reference data comes from the
+[OpenFlights database](https://github.com/jpatokal/openflights), made available
+under the [ODbL](https://opendatacommons.org/licenses/odbl/1-0/); OpenFlights in
+turn sources airport records from OurAirports. Country geometry is
+[Natural Earth](https://www.naturalearthdata.com/) via
+[world-atlas](https://github.com/topojson/world-atlas), public domain.

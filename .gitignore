@@ -3,3 +3,4 @@ node_modules/
 .vercel
 _test.html
 _mock.js
+.claude/

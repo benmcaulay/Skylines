@@ -71,13 +71,18 @@ your own SMTP under Project Settings → Auth before letting real users in.
 
 ### 4. Deploy
 
+Import the repo at [vercel.com/new](https://vercel.com/new), or from a checkout:
+
 ```bash
 vercel
 ```
 
 Framework preset **Other**, no build command, output directory the repo root.
-`vercel.json` sets cache headers and a few security headers; there is nothing to
-compile.
+`vercel.json` sets cache and security headers; there is nothing to compile.
+
+Note that `cleanUrls` is deliberately **not** set. With no framework preset it
+rewrites `/index.html` to `/` and then fails to resolve the root, so the site
+404s on its own home page.
 
 ## Local use
 

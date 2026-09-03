@@ -1422,20 +1422,36 @@ $('#acctBtn').onclick=async()=>{
 };
 
 /* first sign-in on a browser that already has flights: offer to bring them up */
+let entering=null;
 async function enterCloud(){
-  setStatus('sync','syncing');
-  try{
-    const rows=await cloudList();
-    if(!rows.length&&LOG.length&&
-       confirm('This account has no flights yet.\n\nUpload the '+LOG.length+
-               ' flights currently loaded in this browser?')){
-      await cloudInsert(LOG);
-      LOG=await cloudList();
-      toast('Uploaded '+LOG.length+' flights');
-    } else LOG=rows;
-    setStatus('ok',LOG.length+' flights synced');
-  }catch(e){ syncFail(e) }
-  refreshAll();
+  /* Serialised: supabase fires more than one auth event per sign-in, and boot()
+     also adopts an existing session. Two overlapping runs would each see an
+     empty table and each upload the whole log, doubling it. */
+  if(entering) return entering;
+  entering=(async()=>{
+    setStatus('sync','syncing');
+    try{
+      let rows=await cloudList();
+      if(!rows.length&&LOG.length&&
+         confirm('This account has no flights yet.\n\nUpload the '+LOG.length+
+                 ' flights currently loaded in this browser?')){
+        /* confirm() blocks this tab but not another one, so re-read rather than
+           trusting the count from before the dialog opened */
+        rows=await cloudList();
+        if(rows.length){
+          toast(rows.length+' flights are already in this account');
+        }else{
+          await cloudInsert(LOG);
+          rows=await cloudList();
+          toast('Uploaded '+rows.length+' flights');
+        }
+      }
+      LOG=rows;
+      setStatus('ok',LOG.length+' flights synced');
+    }catch(e){ syncFail(e) }
+    refreshAll();
+  })();
+  try{ return await entering } finally { entering=null }
 }
 
 function wireAuth(){
@@ -1502,7 +1518,7 @@ async function boot(){
     wireAuth();
     try{
       const {data}=await sb.auth.getSession();
-      if(data&&data.session){ session=data.session; MODE='cloud'; await enterCloud() }
+      if(data&&data.session&&MODE!=='cloud'){ session=data.session; MODE='cloud'; await enterCloud() }
     }catch(e){ console.warn(e) }
   }
   updateAccount();

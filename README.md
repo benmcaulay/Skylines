@@ -1,6 +1,6 @@
 # Skylines
 
-Every flight you have ever taken, on one globe.
+Track your flights!
 
 A flight log in the spirit of [OpenFlights](https://openflights.org) — a spinning
 orthographic globe with great-circle arcs, per-airport stats, route and airline

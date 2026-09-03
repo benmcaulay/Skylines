@@ -9,7 +9,7 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0e1e2b">
-<meta name="description" content="Every flight you have ever taken, on one globe.">
+<meta name="description" content="Track your flights!">
 <style>
 :root{
   --ocean-hi:#35597a; --ocean-lo:#0e1e2b; --ocean-deep:#091218;
@@ -54,6 +54,7 @@ canvas.dragging{cursor:grabbing}
 .icb{width:26px;height:26px;display:grid;place-items:center;border-radius:7px;cursor:pointer;
   color:var(--ink-faint);background:rgba(255,255,255,.04);border:1px solid transparent;transition:.15s;font-size:12px}
 .icb:hover{color:var(--ink);background:rgba(255,255,255,.10);border-color:var(--panel-line)}
+.icb.danger:hover{color:#fff;background:rgba(255,90,74,.8);border-color:transparent}
 .addbtn{display:flex;align-items:center;justify-content:center;gap:7px;margin:0 18px 13px;padding:10px;
   border-radius:10px;cursor:pointer;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent));
@@ -312,6 +313,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
         <div class="icb" id="bImport" title="Import CSV">↑</div>
         <div class="icb" id="bExport" title="Export CSV">↓</div>
         <div class="icb" id="bRevert" title="Revert to the original import">⟲</div>
+        <div class="icb danger" id="bClear" title="Delete every flight">✕</div>
       </div>
     </div>
     <button class="addbtn" id="bAdd"><span>+</span> Add flight</button>
@@ -406,7 +408,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 <div id="gate">
   <div class="gcard glass">
     <div class="gmark">Skylines</div>
-    <div class="gtag">Every flight you have ever taken, on one globe.</div>
+    <div class="gtag">Track your flights!</div>
     <div class="gline"></div>
 
     <div class="gpanel" id="gDown">
@@ -1210,6 +1212,15 @@ function importCSV(text){
   opReplace(replace?add:LOG.concat(add));
   toast((replace?'Imported ':'Merged ')+add.length+(skipped?' · '+skipped+' skipped':''));
 }
+$('#bClear').onclick=()=>{
+  const n=LOG.length;
+  if(!n) return toast('Nothing to clear');
+  const where = MODE==='cloud' && session ? 'from '+session.user.email : 'from this browser';
+  if(!confirm('Delete all '+n+' flight'+(n===1?'':'s')+' '+where+'?\n\n'+
+              'This cannot be undone. Export them first if you want a copy.')) return;
+  opReplace([]);
+  toast('Cleared '+n+' flights');
+};
 $('#bExport').onclick=exportCSV;
 $('#bImport').onclick=()=>$('#fileIn').click();
 $('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;

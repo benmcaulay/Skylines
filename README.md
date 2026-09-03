@@ -71,7 +71,9 @@ your own SMTP under Project Settings → Auth before letting real users in.
 
 ### 4. Deploy
 
-Import the repo at [vercel.com/new](https://vercel.com/new), or from a checkout:
+Live at **https://skylines-indol.vercel.app**, deployed automatically from
+`main`. To set that up on your own fork, import the repo at
+[vercel.com/new](https://vercel.com/new), or from a checkout:
 
 ```bash
 vercel
@@ -80,7 +82,12 @@ vercel
 Framework preset **Other**, no build command, output directory the repo root.
 `vercel.json` sets cache and security headers; there is nothing to compile.
 
-Note that `cleanUrls` is deliberately **not** set. With no framework preset it
+Two settings worth knowing about. Vercel enables **Deployment Protection** on
+new projects, which puts a Vercel SSO login in front of every `.vercel.app` URL
+— turn it off under Project Settings → Deployment Protection, or the site is
+invisible to everyone but you.
+
+And note that `cleanUrls` is deliberately **not** set. With no framework preset it
 rewrites `/index.html` to `/` and then fails to resolve the root, so the site
 404s on its own home page.
 

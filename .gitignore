@@ -4,3 +4,4 @@ node_modules/
 _test.html
 _mock.js
 .claude/
+.env*

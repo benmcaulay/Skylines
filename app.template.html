@@ -1509,10 +1509,25 @@ $('#gSkip').onclick=()=>{ try{localStorage.setItem(GKEY,'1')}catch(e){} hideGate
 gate.addEventListener('mousedown',e=>{ if(e.target===gate&&localStorage.getItem(GKEY))hideGate() });
 
 /* ===================== go ===================== */
+/* supabase persists its session under sb-<ref>-auth-token; knowing synchronously
+   whether one exists lets us avoid painting the local log over a cloud account */
+function hasPersistedSession(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('sb-')&&k.endsWith('-auth-token')&&localStorage.getItem(k))return true;
+    }
+  }catch(e){}
+  return false;
+}
 async function boot(){
   sb=makeClient();
-  LOG=loadLocal();
+  const resuming = !!sb && hasPersistedSession();
+  /* If a session is about to be restored, start empty rather than flashing the
+     browser's copy of the log and then replacing it with the account's. */
+  LOG = resuming ? [] : loadLocal();
   rebuild(); resize(); buildYears(); render(); requestAnimationFrame(frame);
+  if(resuming) setStatus('sync','syncing');
   if(!hasLib()&&(CFG.url||CFG.key)) toast('Accounts are unavailable — working offline');
   if(sb){
     wireAuth();
@@ -1521,6 +1536,7 @@ async function boot(){
       if(data&&data.session&&MODE!=='cloud'){ session=data.session; MODE='cloud'; await enterCloud() }
     }catch(e){ console.warn(e) }
   }
+  if(MODE!=='cloud'&&resuming){ LOG=loadLocal(); refreshAll(); }  // session did not restore
   updateAccount();
   if(MODE!=='cloud'&&!localStorage.getItem(GKEY)) showGate();
 }

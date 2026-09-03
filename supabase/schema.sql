@@ -1,4 +1,4 @@
--- Skylines · database schema
+-- Skylines - database schema
 -- Run this once in your Supabase project: SQL Editor -> New query -> paste -> Run.
 -- Safe to re-run; every statement is idempotent.
 

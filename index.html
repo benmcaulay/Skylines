@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Skylines</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0e1e2b">
+<meta name="description" content="Every flight you have ever taken, on one globe.">
 <style>
 :root{
   --ocean-hi:#35597a; --ocean-lo:#0e1e2b; --ocean-deep:#091218;
@@ -403,15 +409,10 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
     <div class="gtag">Every flight you have ever taken, on one globe.</div>
     <div class="gline"></div>
 
-    <div class="gpanel" id="gSetup">
-      <div class="lbl">Connect a Supabase project</div>
-      <p class="gnote">Paste the <b>Project URL</b> and <b>anon public</b> key from
-        Project Settings → API. They stay in this browser. For a deployment, put them
-        in <code>config.js</code> instead. Run <code>supabase/schema.sql</code> first.</p>
-      <input type="text" id="sbUrl" placeholder="https://yourproject.supabase.co" spellcheck="false">
-      <input type="text" id="sbKey" placeholder="anon public key" spellcheck="false">
-      <button class="prim wide" id="sbSave">Connect</button>
-      <div class="gmsg" id="sbMsg"></div>
+    <div class="gpanel" id="gDown">
+      <p class="gnote">Accounts are unavailable at the moment. You can carry on without
+        one — your flights are saved in this browser, and you can sign in later to
+        sync them.</p>
     </div>
 
     <div class="gpanel" id="gAuth">
@@ -428,7 +429,6 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 
     <div class="gfoot">
       <span id="gSkip">Continue without an account →</span>
-      <span id="gCfg" title="Change the Supabase project">⚙</span>
     </div>
   </div>
 </div>
@@ -468,12 +468,11 @@ const hhmm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart
 function parseDur(s){const m=/^(\d+):([0-5]\d)$/.exec((s||'').trim());return m?+m[1]*60+ +m[2]:null}
 
 /* ===================== config + supabase ===================== */
-const LKEY='flightlog.v1', GKEY='skylines.guest', CKEY='skylines.cfg';
+const LKEY='flightlog.v1', GKEY='skylines.guest';
 function readCfg(){
   const base=window.SKYLINES_CONFIG||{};
-  let over={}; try{over=JSON.parse(localStorage.getItem(CKEY)||'{}')}catch(e){}
-  return {url:String(over.url||base.SUPABASE_URL||'').trim().replace(/\/+$/,''),
-          key:String(over.key||base.SUPABASE_ANON_KEY||'').trim()};
+  return {url:String(base.SUPABASE_URL||'').trim().replace(/\/+$/,''),
+          key:String(base.SUPABASE_ANON_KEY||'').trim()};
 }
 let CFG=readCfg(), sb=null, session=null, MODE='guest';
 const hasLib=()=>!!(window.supabase&&window.supabase.createClient);
@@ -1389,17 +1388,11 @@ addEventListener('visibilitychange',()=>{
 /* ===================== accounts ===================== */
 let gateMode='in';
 const gate=$('#gate');
-function showGate(panel){
-  const setup = panel==='setup' || !configured();
-  $('#gSetup').classList.toggle('on',setup);
-  $('#gAuth').classList.toggle('on',!setup);
-  $('#gCfg').style.display=setup?'none':'';
-  if(!setup){
-    $('#sbMsg').textContent='';
-    setTimeout(()=>$('#gEmail').focus(),80);
-  }else{
-    $('#sbUrl').value=CFG.url; $('#sbKey').value=CFG.key;
-  }
+function showGate(){
+  const up=configured();
+  $('#gAuth').classList.toggle('on',up);
+  $('#gDown').classList.toggle('on',!up);
+  if(up) setTimeout(()=>$('#gEmail').focus(),80);
   gate.classList.add('show');
 }
 function hideGate(){gate.classList.remove('show')}
@@ -1416,7 +1409,8 @@ function updateAccount(){
   }else{
     em.textContent='Not signed in';
     av.textContent='·'; av.classList.add('guest');
-    btn.textContent=configured()?'Sign in':'Connect';
+    btn.textContent='Sign in';
+    btn.style.display=configured()?'':'none';
     setStatus('','this browser only');
   }
 }
@@ -1424,7 +1418,7 @@ $('#acctBtn').onclick=async()=>{
   if(MODE==='cloud'){
     if(!confirm('Sign out of '+session.user.email+'?\n\nYour flights stay in your account.'))return;
     await sb.auth.signOut();
-  } else showGate(configured()?null:'setup');
+  } else showGate();
 };
 
 /* first sign-in on a browser that already has flights: offer to bring them up */
@@ -1496,16 +1490,6 @@ $('#gMagic').onclick=async()=>{
   }catch(e){ gmsg('#gMsg',e.message||'Could not send the link','err') }
 };
 $('#gSkip').onclick=()=>{ try{localStorage.setItem(GKEY,'1')}catch(e){} hideGate() };
-$('#gCfg').onclick=()=>showGate('setup');
-$('#sbSave').onclick=()=>{
-  const url=$('#sbUrl').value.trim().replace(/\/+$/,''), key=$('#sbKey').value.trim();
-  if(!/^https?:\/\/.+/.test(url))return gmsg('#sbMsg','That does not look like a project URL','err');
-  if(key.length<20)return gmsg('#sbMsg','That does not look like an anon key','err');
-  try{localStorage.setItem(CKEY,JSON.stringify({url,key}))}catch(e){}
-  sb=makeClient();
-  if(!sb)return gmsg('#sbMsg','Could not reach that project','err');
-  wireAuth(); updateAccount(); showGate();
-};
 gate.addEventListener('mousedown',e=>{ if(e.target===gate&&localStorage.getItem(GKEY))hideGate() });
 
 /* ===================== go ===================== */
@@ -1513,7 +1497,7 @@ async function boot(){
   sb=makeClient();
   LOG=loadLocal();
   rebuild(); resize(); buildYears(); render(); requestAnimationFrame(frame);
-  if(!hasLib()&&(CFG.url||CFG.key)) toast('Could not load the Supabase library — offline mode');
+  if(!hasLib()&&(CFG.url||CFG.key)) toast('Accounts are unavailable — working offline');
   if(sb){
     wireAuth();
     try{

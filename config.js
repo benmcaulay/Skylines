@@ -9,8 +9,7 @@
  * Never put the service_role key in this file.
  *
  * Leave them blank and Skylines runs fully offline, storing flights in this
- * browser only. You can also paste the values into the in-app setup screen,
- * which keeps them in localStorage instead of here.
+ * browser only, and the sign-in gate tells visitors accounts are unavailable.
  */
 window.SKYLINES_CONFIG = {
   SUPABASE_URL: 'https://ykvjuhmoaetrbalsyukd.supabase.co',

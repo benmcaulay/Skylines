@@ -51,9 +51,8 @@ window.SKYLINES_CONFIG = {
 The anon key is meant to ship in the browser — RLS is what protects the data.
 Never put the `service_role` key here.
 
-You can also skip this file entirely and paste both values into the in-app setup
-screen, which stores them in `localStorage` for that browser only. Useful for
-trying it out; use `config.js` for a real deployment.
+`config.js` is the only place credentials live. There is deliberately no in-app
+setup screen — visitors get a sign-in form, never a configuration form.
 
 ### 3. Auth settings
 

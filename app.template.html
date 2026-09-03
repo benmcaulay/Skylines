@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skylines</title>
+<style>
+:root{
+  --ocean-hi:#35597a; --ocean-lo:#0e1e2b; --ocean-deep:#091218;
+  --ink:#e8f0f7; --ink-dim:#8ba3ba; --ink-faint:#5b7189;
+  --accent:#f7bf62; --accent-2:#ff8a63; --cool:#6fd4ff; --bad:#ff7a6b;
+  --panel:rgba(13,23,33,.74); --panel-line:rgba(140,180,215,.13);
+  --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--ocean-deep);color:var(--ink);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;font-size:13px}
+#stage{position:fixed;inset:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+canvas.dragging{cursor:grabbing}
+.glass{background:var(--panel);backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--panel-line);
+  border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05)}
+.lbl{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+
+#mast{position:absolute;top:22px;left:24px;z-index:5;pointer-events:none}
+#mast h1{font-size:19px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;
+  text-shadow:0 2px 18px rgba(0,0,0,.6)}
+#mast .sub{margin-top:5px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink-dim)}
+#mast .rule{width:46px;height:1px;background:linear-gradient(90deg,var(--accent),transparent);margin:9px 0 0}
+
+#ctl{position:absolute;top:22px;left:50%;transform:translateX(-50%);z-index:6;display:flex;gap:6px;padding:5px}
+.btn{appearance:none;border:0;background:transparent;color:var(--ink-dim);font-family:var(--mono);
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:7px 13px;border-radius:9px;
+  cursor:pointer;transition:.18s;white-space:nowrap}
+.btn:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.btn.on{color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent));font-weight:700;
+  box-shadow:0 2px 12px rgba(247,191,98,.28)}
+.sep{width:1px;background:var(--panel-line);margin:4px 3px}
+
+#side{position:absolute;top:22px;right:22px;bottom:22px;width:376px;z-index:5;display:flex;
+  flex-direction:column;overflow:hidden}
+.shead{padding:15px 18px 13px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.shead .sub{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-top:5px}
+.iconrow{display:flex;gap:3px}
+.icb{width:26px;height:26px;display:grid;place-items:center;border-radius:7px;cursor:pointer;
+  color:var(--ink-faint);background:rgba(255,255,255,.04);border:1px solid transparent;transition:.15s;font-size:12px}
+.icb:hover{color:var(--ink);background:rgba(255,255,255,.10);border-color:var(--panel-line)}
+.addbtn{display:flex;align-items:center;justify-content:center;gap:7px;margin:0 18px 13px;padding:10px;
+  border-radius:10px;cursor:pointer;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent));
+  box-shadow:0 4px 18px rgba(247,191,98,.22);transition:.16s;border:0;width:calc(100% - 36px)}
+.addbtn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.addbtn span{font-size:14px;line-height:1}
+
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line);
+  border-top:1px solid var(--panel-line);border-bottom:1px solid var(--panel-line)}
+.stat{background:rgba(10,18,26,.55);padding:11px 12px}
+.stat .v{font-family:var(--mono);font-size:16px;font-weight:600;letter-spacing:-.01em}
+.stat .v small{font-size:10px;color:var(--ink-dim);font-weight:400}
+.stat .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  margin-top:3px;font-weight:600}
+
+.filters{display:flex;gap:7px;padding:12px 18px;border-bottom:1px solid var(--panel-line)}
+select,input[type=text],input[type=date],input[type=number]{
+  flex:1;min-width:0;appearance:none;background:rgba(255,255,255,.045);color:var(--ink);
+  border:1px solid var(--panel-line);border-radius:8px;padding:8px 9px;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.04em;outline:none;transition:.16s}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-faint) 50%),
+  linear-gradient(135deg,var(--ink-faint) 50%,transparent 50%);
+  background-position:calc(100% - 13px) 13px,calc(100% - 9px) 13px;background-size:4px 4px,4px 4px;
+  background-repeat:no-repeat;padding-right:22px;cursor:pointer}
+select option{background:#101c27}
+input::placeholder{color:var(--ink-faint)}
+select:focus,input:focus{border-color:rgba(247,191,98,.45);background-color:rgba(247,191,98,.05)}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3) saturate(3) hue-rotate(2deg);cursor:pointer}
+
+.tabs{display:flex;gap:2px;padding:10px 14px 0}
+.tab{flex:1;text-align:center;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+  color:var(--ink-faint);padding:8px 0 9px;cursor:pointer;border-bottom:1.5px solid transparent;transition:.16s}
+.tab:hover{color:var(--ink-dim)}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+#body{flex:1;overflow-y:auto;overscroll-behavior:contain}
+#body::-webkit-scrollbar{width:8px}
+#body::-webkit-scrollbar-thumb{background:rgba(140,180,215,.16);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
+
+.row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;padding:9px 18px;
+  border-bottom:1px solid rgba(140,180,215,.07);cursor:pointer;transition:background .14s;position:relative}
+.row:hover{background:rgba(247,191,98,.07)}
+.row.sel{background:rgba(247,191,98,.13);box-shadow:inset 2px 0 0 var(--accent)}
+.row .date{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);line-height:1.35}
+.row .date b{display:block;color:var(--ink-dim);font-weight:600;font-size:10.5px}
+.pair{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+.pair i{color:var(--accent);font-style:normal;font-size:11px;opacity:.85}
+.row .al{font-size:10px;color:var(--ink-faint);margin-top:2px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:180px}
+.row .num{text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink-dim);line-height:1.4}
+.row .num s{display:block;text-decoration:none;font-size:9.5px;color:var(--ink-faint)}
+.acts{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:none;gap:3px;
+  background:linear-gradient(90deg,transparent,rgba(14,24,34,.96) 22%);padding-left:26px}
+.row:hover .acts{display:flex}
+.act{width:23px;height:23px;display:grid;place-items:center;border-radius:6px;font-size:11px;
+  color:var(--ink-faint);background:rgba(255,255,255,.05);transition:.14s}
+.act:hover{color:var(--ink);background:rgba(255,255,255,.14)}
+.act.rt:hover{color:#0d1620;background:var(--accent)}
+.act.del:hover{color:#fff;background:rgba(255,90,74,.75)}
+
+.sec{padding:16px 18px;border-bottom:1px solid rgba(140,180,215,.07)}
+.sec>.lbl{margin-bottom:11px}
+.bar{display:grid;grid-template-columns:104px 1fr 52px;gap:9px;align-items:center;margin-bottom:7px}
+.bar .n{font-family:var(--mono);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .t{height:5px;border-radius:3px;background:rgba(140,180,215,.10);overflow:hidden}
+.bar .t>div{height:100%;border-radius:3px;background:linear-gradient(90deg,rgba(247,191,98,.55),var(--accent));
+  box-shadow:0 0 10px rgba(247,191,98,.3)}
+.bar .q{text-align:right;font-family:var(--mono);font-size:9.5px;color:var(--ink-faint)}
+.fact{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;
+  border-bottom:1px dotted rgba(140,180,215,.12)}
+.fact:last-child{border-bottom:0}
+.fact .k{font-size:10px;color:var(--ink-faint)}
+.fact .v{font-family:var(--mono);font-size:11px;text-align:right}
+.fact .v em{font-style:normal;color:var(--accent)}
+.empty{padding:44px 18px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;letter-spacing:.08em}
+
+#time{position:absolute;left:24px;bottom:22px;z-index:5;padding:13px 16px 11px;width:min(560px,calc(100vw - 444px))}
+#time .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+#time .head span{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.08em}
+#yrs{display:flex;gap:4px;align-items:flex-end;height:52px}
+.yr{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;cursor:pointer;height:100%}
+.yr .b{width:100%;border-radius:3px 3px 1px 1px;min-height:2px;
+  background:linear-gradient(180deg,rgba(247,191,98,.75),rgba(247,191,98,.18));transition:.2s}
+.yr .l{font-family:var(--mono);font-size:8.5px;color:var(--ink-faint);transition:.2s}
+.yr:hover .b{background:linear-gradient(180deg,#ffd489,rgba(247,191,98,.4))}
+.yr.on .b{background:linear-gradient(180deg,#fff0cf,var(--accent));box-shadow:0 0 14px rgba(247,191,98,.45)}
+.yr.on .l{color:var(--accent);font-weight:700}
+.yr.off .b{background:rgba(140,180,215,.13)}
+
+#tip{position:absolute;z-index:9;pointer-events:none;opacity:0;transition:opacity .14s;padding:10px 13px;
+  min-width:170px;transform:translate(-50%,-118%)}
+#tip.show{opacity:1}
+#tip .t1{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.07em}
+#tip .t2{font-size:10px;color:var(--ink-dim);margin-top:3px}
+#tip .t3{font-family:var(--mono);font-size:9.5px;color:var(--accent);margin-top:5px}
+#hint{position:absolute;left:24px;bottom:0;z-index:4;font-family:var(--mono);font-size:9px;
+  letter-spacing:.1em;color:rgba(91,113,137,.75);padding:0 2px 7px}
+
+/* ---------- modal ---------- */
+#scrim{position:fixed;inset:0;z-index:20;background:rgba(4,9,14,.62);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:24px}
+#scrim.show{display:flex}
+#modal{width:min(560px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;
+  animation:pop .22s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:17px 20px;
+  border-bottom:1px solid var(--panel-line)}
+.mhead h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:600}
+.mbody{padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:13px}
+.mbody::-webkit-scrollbar{width:8px}
+.mbody::-webkit-scrollbar-thumb{background:rgba(140,180,215,.16);border-radius:4px}
+.frow{display:flex;gap:10px;align-items:flex-end}
+.f{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.f>.lbl{padding-left:1px}
+.mfoot{display:flex;gap:9px;justify-content:flex-end;align-items:center;padding:14px 20px;
+  border-top:1px solid var(--panel-line)}
+.ghost{appearance:none;border:1px solid var(--panel-line);background:rgba(255,255,255,.04);color:var(--ink-dim);
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:9px 15px;
+  border-radius:9px;cursor:pointer;transition:.16s}
+.ghost:hover{color:var(--ink);background:rgba(255,255,255,.09)}
+.prim{appearance:none;border:0;color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent));
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  padding:10px 18px;border-radius:9px;cursor:pointer;transition:.16s}
+.prim:hover{filter:brightness(1.08)}
+.prim:disabled{opacity:.4;cursor:not-allowed;filter:none}
+
+/* toggle */
+.tog{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;padding:7px 0}
+.tog .sw{width:36px;height:20px;border-radius:11px;background:rgba(140,180,215,.16);position:relative;transition:.2s;flex:none}
+.tog .sw::after{content:'';position:absolute;top:2.5px;left:2.5px;width:15px;height:15px;border-radius:50%;
+  background:var(--ink-dim);transition:.2s}
+.tog.on .sw{background:linear-gradient(90deg,#ffd489,var(--accent))}
+.tog.on .sw::after{left:18.5px;background:#0d1620}
+.tog .tx{font-size:11px;color:var(--ink-dim)}
+.tog.on .tx{color:var(--ink)}
+
+/* combobox */
+.combo{position:relative}
+.combo input{width:100%;font-size:11.5px;padding:9px 10px}
+.combo .picked{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);
+  font-size:9px;color:var(--accent);letter-spacing:.1em;pointer-events:none}
+.menu{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:30;max-height:238px;overflow-y:auto;
+  background:rgba(11,20,29,.98);border:1px solid var(--panel-line);border-radius:10px;
+  box-shadow:0 20px 44px rgba(0,0,0,.6);display:none;padding:4px}
+.menu.show{display:block}
+.menu::-webkit-scrollbar{width:7px}
+.menu::-webkit-scrollbar-thumb{background:rgba(140,180,215,.2);border-radius:4px}
+.opt{padding:7px 9px;border-radius:7px;cursor:pointer;display:flex;align-items:baseline;gap:9px}
+.opt:hover,.opt.cur{background:rgba(247,191,98,.14)}
+.opt .code{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--accent);min-width:30px;flex:none}
+.opt .nm{font-size:11px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt .sub{font-size:9.5px;color:var(--ink-faint);margin-left:auto;white-space:nowrap;flex:none}
+.opt.new .code{color:var(--cool)}
+.mnote{font-size:9.5px;color:var(--ink-faint);padding:6px 10px 4px;letter-spacing:.06em;text-transform:uppercase}
+
+.preview{font-family:var(--mono);font-size:11px;color:var(--ink-dim);background:rgba(247,191,98,.06);
+  border:1px solid rgba(247,191,98,.16);border-radius:9px;padding:11px 13px;line-height:1.65}
+.preview b{color:var(--accent);font-weight:600}
+.preview .leg{display:flex;justify-content:space-between;gap:10px}
+.warn{color:var(--bad);font-size:10.5px;font-family:var(--mono)}
+
+/* ---------- account bar ---------- */
+.acct{display:flex;align-items:center;gap:10px;padding:11px 14px 11px 16px;
+  border-bottom:1px solid var(--panel-line);background:rgba(255,255,255,.018)}
+.av{width:27px;height:27px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;color:#0d1620;
+  background:linear-gradient(145deg,#ffd489,var(--accent));box-shadow:0 2px 10px rgba(247,191,98,.25)}
+.av.guest{background:linear-gradient(145deg,#5b7189,#3d4f61);color:#c8d8e6;box-shadow:none}
+.acct .who{flex:1;min-width:0}
+.acct .em{font-size:11px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct .st{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);margin-top:2px;display:flex;align-items:center;gap:5px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);flex:none}
+.dot.ok{background:#5fd39a;box-shadow:0 0 7px rgba(95,211,154,.7)}
+.dot.sync{background:var(--accent);animation:pulse 1s infinite}
+.dot.error{background:var(--bad);box-shadow:0 0 7px rgba(255,122,107,.7)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.acct .go{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-dim);background:rgba(255,255,255,.05);border:1px solid var(--panel-line);
+  padding:6px 10px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap}
+.acct .go:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+
+/* ---------- sign-in gate ---------- */
+#gate{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+  padding:24px;background:radial-gradient(ellipse at 30% 40%,rgba(6,14,22,.55),rgba(4,9,14,.86));
+  backdrop-filter:blur(3px)}
+#gate.show{display:flex}
+.gcard{width:min(390px,100%);padding:30px 28px 22px;animation:pop .3s cubic-bezier(.2,.9,.3,1.1)}
+.gmark{font-size:22px;font-weight:600;letter-spacing:.34em;text-transform:uppercase;text-align:center}
+.gtag{text-align:center;font-size:11px;color:var(--ink-dim);margin-top:9px;letter-spacing:.02em}
+.gline{height:1px;background:linear-gradient(90deg,transparent,rgba(247,191,98,.5),transparent);margin:19px 0}
+.gpanel{display:none;flex-direction:column;gap:9px}
+.gpanel.on{display:flex}
+.gpanel input{width:100%;font-size:12px;padding:10px 11px;font-family:var(--sans);letter-spacing:0}
+.gtabs{display:flex;gap:3px;background:rgba(255,255,255,.04);border-radius:9px;padding:3px;margin-bottom:4px}
+.gtab{flex:1;text-align:center;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+  color:var(--ink-faint);padding:8px 0;border-radius:7px;cursor:pointer;transition:.15s}
+.gtab:hover{color:var(--ink-dim)}
+.gtab.on{color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent))}
+.wide{width:100%;justify-content:center}
+.gnote{font-size:10.5px;color:var(--ink-faint);line-height:1.6;margin:-2px 0 4px}
+.gnote code{font-family:var(--mono);font-size:10px;color:var(--ink-dim)}
+.gnote a{color:var(--accent);text-decoration:none;border-bottom:1px dotted rgba(247,191,98,.4)}
+.gmsg{font-size:10.5px;line-height:1.55;min-height:14px;text-align:center;font-family:var(--mono);letter-spacing:.02em}
+.gmsg.err{color:var(--bad)} .gmsg.ok{color:#5fd39a}
+.gfoot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;
+  padding-top:15px;border-top:1px solid var(--panel-line)}
+.gfoot span{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);cursor:pointer;transition:.15s}
+.gfoot span:hover{color:var(--accent)}
+
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);z-index:40;padding:11px 18px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;opacity:0;
+  transition:.24s;pointer-events:none}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1180px){#side{width:340px}#time{width:calc(100vw - 400px)}}
+@media (max-width:900px){
+  #side{left:14px;right:14px;top:auto;bottom:14px;width:auto;height:52vh}
+  #mast{top:16px;left:16px}#ctl{top:auto;bottom:calc(52vh + 26px)}
+  #time,#hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="mast">
+    <h1>Skylines</h1><div class="rule"></div>
+    <div class="sub" id="mastsub">—</div>
+  </div>
+
+  <div id="ctl" class="glass">
+    <button class="btn on" data-mode="globe">Globe</button>
+    <button class="btn" data-mode="map">Map</button>
+    <span class="sep"></span>
+    <button class="btn on" id="spin">Spin</button>
+    <button class="btn" id="reset">Reset view</button>
+  </div>
+
+  <div id="side" class="glass">
+    <div class="acct">
+      <div class="av guest" id="acctAv">·</div>
+      <div class="who">
+        <div class="em" id="acctEm">Not signed in</div>
+        <div class="st"><span class="dot" id="acctDot"></span><span id="acctSt">this browser only</span></div>
+      </div>
+      <div class="go" id="acctBtn">Sign in</div>
+    </div>
+    <div class="shead">
+      <div>
+        <div class="lbl">Logged flights</div>
+        <div class="sub" id="range">—</div>
+      </div>
+      <div class="iconrow">
+        <div class="icb" id="bImport" title="Import CSV">↑</div>
+        <div class="icb" id="bExport" title="Export CSV">↓</div>
+        <div class="icb" id="bRevert" title="Revert to the original import">⟲</div>
+      </div>
+    </div>
+    <button class="addbtn" id="bAdd"><span>+</span> Add flight</button>
+    <div class="statgrid" id="stats"></div>
+    <div class="filters">
+      <select id="fAir"></select>
+      <input type="text" id="fQ" placeholder="SEARCH">
+    </div>
+    <div class="tabs">
+      <div class="tab on" data-tab="flights">Flights</div>
+      <div class="tab" data-tab="routes">Routes</div>
+      <div class="tab" data-tab="stats">Analysis</div>
+    </div>
+    <div id="body"></div>
+  </div>
+
+  <div id="time" class="glass">
+    <div class="head"><span class="lbl">Miles flown by year</span><span id="tsel">All years</span></div>
+    <div id="yrs"></div>
+  </div>
+
+  <div id="hint">DRAG TO ROTATE · SCROLL TO ZOOM · CLICK AN AIRPORT · N FOR NEW FLIGHT</div>
+  <div id="tip" class="glass"></div>
+</div>
+
+<div id="scrim">
+  <div id="modal" class="glass">
+    <div class="mhead">
+      <h2 id="mtitle">New flight</h2>
+      <div class="icb" id="mClose">✕</div>
+    </div>
+    <div class="mbody">
+      <div class="frow">
+        <div class="f" style="flex:1.1">
+          <div class="lbl">From</div>
+          <div class="combo" id="cFrom"></div>
+        </div>
+        <div class="icb" id="bSwap" title="Swap" style="margin-bottom:5px">⇄</div>
+        <div class="f" style="flex:1.1">
+          <div class="lbl">To</div>
+          <div class="combo" id="cTo"></div>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="f" style="flex:1.6">
+          <div class="lbl">Airline</div>
+          <div class="combo" id="cAir"></div>
+        </div>
+        <div class="f" style="flex:.75">
+          <div class="lbl">Flight no.</div>
+          <input type="text" id="iNum" placeholder="UA 1234">
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="f"><div class="lbl">Date out</div><input type="date" id="iDate"></div>
+        <div class="f"><div class="lbl">Class</div>
+          <select id="iCls">
+            <option value="">—</option><option>Economy</option><option>Premium economy</option>
+            <option>Business</option><option>First</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="rtWrap" style="border-top:1px solid var(--panel-line);padding-top:6px">
+        <div class="tog on" id="tRT"><div class="sw"></div>
+          <div class="tx">Round trip — log the return leg too</div></div>
+        <div class="frow" id="rtFields" style="margin-top:8px">
+          <div class="f"><div class="lbl">Date back</div><input type="date" id="iDate2"></div>
+          <div class="f"><div class="lbl">Return flight no.</div><input type="text" id="iNum2" placeholder="optional"></div>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="f"><div class="lbl">Distance (mi)</div><input type="text" id="iMi" placeholder="auto"></div>
+        <div class="f"><div class="lbl">Duration (h:mm)</div><input type="text" id="iDur" placeholder="auto"></div>
+        <div class="f" style="flex:1.4"><div class="lbl">Note</div><input type="text" id="iNote" placeholder="optional"></div>
+      </div>
+
+      <div class="preview" id="prev">Pick two airports to see the route.</div>
+    </div>
+    <div class="mfoot">
+      <span class="warn" id="mWarn" style="margin-right:auto"></span>
+      <button class="ghost" id="mCancel">Cancel</button>
+      <button class="ghost" id="mAnother">Save + another</button>
+      <button class="prim" id="mSave">Save flight</button>
+    </div>
+  </div>
+</div>
+
+<div id="gate">
+  <div class="gcard glass">
+    <div class="gmark">Skylines</div>
+    <div class="gtag">Every flight you have ever taken, on one globe.</div>
+    <div class="gline"></div>
+
+    <div class="gpanel" id="gSetup">
+      <div class="lbl">Connect a Supabase project</div>
+      <p class="gnote">Paste the <b>Project URL</b> and <b>anon public</b> key from
+        Project Settings → API. They stay in this browser. For a deployment, put them
+        in <code>config.js</code> instead. Run <code>supabase/schema.sql</code> first.</p>
+      <input type="text" id="sbUrl" placeholder="https://yourproject.supabase.co" spellcheck="false">
+      <input type="text" id="sbKey" placeholder="anon public key" spellcheck="false">
+      <button class="prim wide" id="sbSave">Connect</button>
+      <div class="gmsg" id="sbMsg"></div>
+    </div>
+
+    <div class="gpanel" id="gAuth">
+      <div class="gtabs">
+        <div class="gtab on" data-g="in">Sign in</div>
+        <div class="gtab" data-g="up">Create account</div>
+      </div>
+      <input type="email" id="gEmail" placeholder="you@example.com" autocomplete="email" spellcheck="false">
+      <input type="password" id="gPw" placeholder="Password" autocomplete="current-password">
+      <button class="prim wide" id="gGo">Sign in</button>
+      <button class="ghost wide" id="gMagic">Email me a link instead</button>
+      <div class="gmsg" id="gMsg"></div>
+    </div>
+
+    <div class="gfoot">
+      <span id="gSkip">Continue without an account →</span>
+      <span id="gCfg" title="Change the Supabase project">⚙</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="glass"></div>
+<input type="file" id="fileIn" accept=".csv,text/csv" style="display:none">
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const WORLD = /*__WORLD__*/;
+const REF   = /*__REF__*/;
+const SEED  = /*__SEED__*/;
+</script>
+<script>
+/* ===================== helpers ===================== */
+const $=s=>document.querySelector(s);
+const TAU=Math.PI*2, RAD=Math.PI/180;
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hrs(mins){const d=Math.floor(mins/1440),h=Math.floor(mins%1440/60),m=mins%60;
+  return d? d+'d '+h+'h' : h+'h '+String(m).padStart(2,'0')+'m';}
+function dstr(d){const p=d.split('-');return{top:p[2]+' '+MON[+p[1]-1],bot:p[0]}}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2300)}
+
+function apOf(code){const r=REF.ap[code];return r?{code,n:r[0],c:r[1],co:r[2],lat:r[3],lon:r[4]}:null}
+function haversine(a,b){
+  const R=3958.76, p1=a.lat*RAD,p2=b.lat*RAD,dp=(b.lat-a.lat)*RAD,dl=(b.lon-a.lon)*RAD;
+  const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+/* OpenFlights-style estimate: 30 min on the ground + 500 mph cruise */
+const estMins=mi=>Math.round(30+mi/500*60);
+const hhmm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function parseDur(s){const m=/^(\d+):([0-5]\d)$/.exec((s||'').trim());return m?+m[1]*60+ +m[2]:null}
+
+/* ===================== config + supabase ===================== */
+const LKEY='flightlog.v1', GKEY='skylines.guest', CKEY='skylines.cfg';
+function readCfg(){
+  const base=window.SKYLINES_CONFIG||{};
+  let over={}; try{over=JSON.parse(localStorage.getItem(CKEY)||'{}')}catch(e){}
+  return {url:String(over.url||base.SUPABASE_URL||'').trim().replace(/\/+$/,''),
+          key:String(over.key||base.SUPABASE_ANON_KEY||'').trim()};
+}
+let CFG=readCfg(), sb=null, session=null, MODE='guest';
+const hasLib=()=>!!(window.supabase&&window.supabase.createClient);
+const configured=()=>!!(CFG.url&&CFG.key&&hasLib());
+function makeClient(){
+  CFG=readCfg();
+  if(!configured())return null;
+  try{
+    return window.supabase.createClient(CFG.url,CFG.key,
+      {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  }catch(e){console.warn('Supabase init failed',e);return null}
+}
+
+/* ===================== data store ===================== */
+/* A record is {id?,date,from,to,airline,num,miles,dur,cls,note}. `id` exists
+   only for rows that live in Postgres; guest rows are id-less. */
+const fromRow=r=>({id:r.id,date:r.flown_on,from:r.from_code,to:r.to_code,airline:r.airline||'',
+  num:r.flight_no||'',miles:r.miles||0,dur:r.duration||'',cls:r.cabin||'',note:r.note||''});
+const toRow=(r,uid)=>({user_id:uid,flown_on:r.date,from_code:r.from,to_code:r.to,
+  airline:r.airline||'',flight_no:r.num||'',miles:r.miles||null,duration:r.dur||'',
+  cabin:r.cls||'',note:r.note||''});
+
+let LOG=[];
+function storedLocal(){
+  try{const raw=localStorage.getItem(LKEY);if(raw){const p=JSON.parse(raw);if(Array.isArray(p))return p}}catch(e){}
+  return null;
+}
+const loadLocal=()=>storedLocal()||SEED.map(r=>({...r}));
+function saveLocal(){ if(MODE==='guest'){try{localStorage.setItem(LKEY,JSON.stringify(LOG))}catch(e){}} }
+
+const uid=()=>session&&session.user&&session.user.id;
+async function cloudList(){
+  const {data,error}=await sb.from('flights').select('*').order('flown_on',{ascending:true});
+  if(error)throw error;
+  return data.map(fromRow);
+}
+async function cloudInsert(recs){
+  const {error}=await sb.from('flights').insert(recs.map(r=>toRow(r,uid())));
+  if(error)throw error;
+}
+async function cloudUpdate(rec){
+  const row=toRow(rec,uid()); delete row.user_id;
+  const {error}=await sb.from('flights').update(row).eq('id',rec.id);
+  if(error)throw error;
+}
+async function cloudDelete(id){
+  const {error}=await sb.from('flights').delete().eq('id',id);
+  if(error)throw error;
+}
+async function cloudClear(){
+  const {error}=await sb.from('flights').delete().eq('user_id',uid());
+  if(error)throw error;
+}
+
+const refreshAll=()=>{rebuild();buildYears();render()};
+function setStatus(kind,text){
+  const d=$('#acctDot'); if(!d)return;
+  d.className='dot'+(kind?' '+kind:'');
+  if(text!=null)$('#acctSt').textContent=text;
+}
+function syncFail(e){
+  console.error(e);
+  toast('Sync failed — '+((e&&e.message)||'unknown error'));
+  setStatus('error','not synced');
+  /* try once to get back in step with the server; if that fails too, stay in
+     the error state rather than spinning on "syncing" forever. */
+  resync().catch(()=>setStatus('error','not synced'));
+}
+async function resync(){
+  if(MODE!=='cloud')return;
+  setStatus('sync','syncing');
+  LOG=await cloudList(); refreshAll();
+  setStatus('ok',LOG.length+' flights synced');
+}
+/* Every op applies locally first so the map never waits on the network. */
+async function opAdd(recs){
+  LOG.push(...recs); saveLocal(); refreshAll();
+  if(MODE!=='cloud')return;
+  setStatus('sync','saving');
+  try{ await cloudInsert(recs); await resync() }catch(e){ syncFail(e) }
+}
+async function opUpdate(rec){
+  saveLocal(); refreshAll();
+  if(MODE!=='cloud')return;
+  setStatus('sync','saving');
+  try{ rec.id? await cloudUpdate(rec) : await cloudInsert([rec]); await resync() }catch(e){ syncFail(e) }
+}
+async function opDelete(rec){
+  const i=LOG.indexOf(rec); if(i>=0)LOG.splice(i,1);
+  saveLocal(); refreshAll();
+  if(MODE!=='cloud')return;
+  setStatus('sync','saving');
+  try{ if(rec.id) await cloudDelete(rec.id); await resync() }catch(e){ syncFail(e) }
+}
+async function opReplace(recs){
+  LOG=recs; saveLocal(); refreshAll();
+  if(MODE!=='cloud')return;
+  setStatus('sync','saving');
+  try{ await cloudClear(); if(LOG.length) await cloudInsert(LOG); await resync() }catch(e){ syncFail(e) }
+}
+
+let FLIGHTS=[], AIR={};
+function rebuild(){
+  LOG=LOG.filter(r=>REF.ap[r.from]&&REF.ap[r.to]);
+  LOG.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  AIR={};
+  FLIGHTS=LOG.map((r,i)=>{
+    const a=apOf(r.from), b=apOf(r.to);
+    AIR[r.from]=a; AIR[r.to]=b;
+    const mi=r.miles||Math.round(haversine(a,b));
+    const mins=parseDur(r.dur)??estMins(mi);
+    return {id:i,rec:r,from:r.from,to:r.to,a,b,airline:r.airline||'—',miles:mi,mins,
+      dur:hhmm(mins),date:r.date,year:+r.date.slice(0,4),num:r.num||'',cls:r.cls||'',note:r.note||'',
+      path:gcPath(a.lon,a.lat,b.lon,b.lat,140),phase:(i*0.137)%1};
+  });
+  CACHE.key='';
+}
+function gcPath(lon1,lat1,lon2,lat2,n){
+  const v1=toVec(lon1,lat1),v2=toVec(lon2,lat2);
+  const dot=Math.max(-1,Math.min(1,v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]));
+  const d=Math.acos(dot),sd=Math.sin(d),out=new Float64Array(n*2);
+  for(let i=0;i<n;i++){
+    const t=i/(n-1); let x,y,z;
+    if(sd<1e-9){x=v1[0];y=v1[1];z=v1[2]}
+    else{const A=Math.sin((1-t)*d)/sd,B=Math.sin(t*d)/sd;
+      x=A*v1[0]+B*v2[0];y=A*v1[1]+B*v2[1];z=A*v1[2]+B*v2[2]}
+    const h=Math.hypot(x,y,z);
+    out[i*2]=Math.atan2(y,x)/RAD; out[i*2+1]=Math.asin(z/h)/RAD;
+  }
+  return out;
+}
+function toVec(lon,lat){const p=lat*RAD,l=lon*RAD;
+  return [Math.cos(p)*Math.cos(l),Math.cos(p)*Math.sin(l),Math.sin(p)]}
+
+/* ===================== canvas / state ===================== */
+const cv=$('#cv'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+const S={mode:'globe',spin:true,drag:false,rot:[30,22],zoom:1,mzoom:1,mpan:[0,0],tween:null,
+  year:'all',airline:'all',q:'',tab:'flights',hoverF:null,selF:null,hoverA:null,selA:null,mouse:null};
+let SCREEN={};
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener('resize',resize);
+const viewport=()=>({cx:W>900?(W-400)/2:W/2, cy:W>900?H/2:H*0.28});
+const globeR=()=>{const v=viewport();return Math.min(v.cx*0.92,H*0.42)*S.zoom};
+
+let P={};
+function updateProj(){
+  const v=viewport();
+  if(S.mode==='globe'){
+    const R=globeR(),p0=S.rot[1]*RAD;
+    P={type:'globe',R,cx:v.cx,cy:v.cy,sp:Math.sin(p0),cp:Math.cos(p0)};
+  }else{
+    const k=Math.min((W-(W>900?430:20))/360,H/195)*S.mzoom;
+    P={type:'map',k,cx:v.cx+S.mpan[0],cy:v.cy+S.mpan[1]};
+  }
+}
+function proj(lon,lat,lift){
+  if(P.type==='globe'){
+    const p=lat*RAD,dl=(lon-S.rot[0])*RAD,cp=Math.cos(p),sp=Math.sin(p),cd=Math.cos(dl);
+    const x=cp*Math.sin(dl), y=P.cp*sp-P.sp*cp*cd, z=P.sp*sp+P.cp*cp*cd, r=1+(lift||0);
+    return [P.cx+P.R*r*x, P.cy-P.R*r*y, z>=0||r*Math.hypot(x,y)>1, z];
+  }
+  return [P.cx+lon*P.k, P.cy-lat*P.k, true, 1];
+}
+const C={oceanHi:'#35597a',oceanMid:'#22415a',oceanLo:'#0e1e2b',land:'#14222e',
+  landLine:'rgba(150,192,226,.20)',grat:'rgba(150,192,226,.055)',dim:'rgba(126,166,201,.20)',
+  arcA:'#f7bf62',arcB:'#ff8a63'};
+
+/* ===================== render ===================== */
+function drawOcean(){
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0b1620');bg.addColorStop(1,'#070d13');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  if(P.type==='globe'){
+    const R=P.R;
+    const glow=ctx.createRadialGradient(P.cx,P.cy,R*0.96,P.cx,P.cy,R*1.30);
+    glow.addColorStop(0,'rgba(104,168,220,.34)');glow.addColorStop(.45,'rgba(66,120,172,.11)');
+    glow.addColorStop(1,'rgba(60,110,160,0)');
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(P.cx,P.cy,R*1.30,0,TAU);ctx.fill();
+    const g=ctx.createRadialGradient(P.cx-R*.38,P.cy-R*.42,R*.06,P.cx,P.cy,R*1.02);
+    g.addColorStop(0,'#4d87b3');g.addColorStop(.32,C.oceanHi);g.addColorStop(.70,C.oceanMid);g.addColorStop(1,C.oceanLo);
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(P.cx,P.cy,R,0,TAU);ctx.fill();
+    ctx.strokeStyle='rgba(160,205,240,.22)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(P.cx,P.cy,R-.5,0,TAU);ctx.stroke();
+  }else{
+    const x0=P.cx-180*P.k,y0=P.cy-90*P.k,w=360*P.k,h=180*P.k;
+    const g=ctx.createLinearGradient(x0,y0,x0+w*.65,y0+h);
+    g.addColorStop(0,'#3d6389');g.addColorStop(.5,C.oceanHi);g.addColorStop(1,C.oceanMid);
+    ctx.fillStyle=g;ctx.fillRect(x0,y0,w,h);
+    ctx.strokeStyle='rgba(150,192,226,.14)';ctx.lineWidth=1;ctx.strokeRect(x0+.5,y0+.5,w-1,h-1);
+  }
+}
+function drawGraticule(){
+  ctx.strokeStyle=C.grat;ctx.lineWidth=.7;ctx.beginPath();
+  for(let lon=-180;lon<180;lon+=15){let st=false;
+    for(let lat=-90;lat<=90;lat+=2){const p=proj(lon,lat,0);
+      if(!p[2]){st=false;continue} st?ctx.lineTo(p[0],p[1]):(ctx.moveTo(p[0],p[1]),st=true)}}
+  for(let lat=-75;lat<=75;lat+=15){let st=false,pv=null;
+    for(let lon=-180;lon<=180;lon+=2){const p=proj(lon,lat,0);
+      if(!p[2]){st=false;pv=null;continue}
+      if(st&&pv&&Math.hypot(p[0]-pv[0],p[1]-pv[1])>W*.5)ctx.moveTo(p[0],p[1]);
+      else st?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);
+      st=true;pv=p}}
+  ctx.stroke();
+}
+function drawLand(){
+  ctx.save();
+  if(P.type==='globe'){ctx.beginPath();ctx.arc(P.cx,P.cy,P.R,0,TAU);ctx.clip()}
+  ctx.fillStyle=C.land;ctx.strokeStyle=C.landLine;ctx.lineWidth=.75;ctx.lineJoin='round';
+  for(const poly of WORLD){
+    ctx.beginPath();let any=false;
+    for(const ring of poly){
+      let st=false,pv=null,drew=false;
+      for(let i=0;i<ring.length;i+=2){
+        const p=proj(ring[i],ring[i+1],0);
+        if(!p[2]){st=false;pv=null;continue}
+        if(st&&pv&&Math.abs(p[0]-pv[0])>W*.6)ctx.moveTo(p[0],p[1]);
+        else if(st)ctx.lineTo(p[0],p[1]); else ctx.moveTo(p[0],p[1]);
+        st=true;pv=p;drew=true;
+      }
+      if(drew){ctx.closePath();any=true}
+    }
+    if(any){ctx.fill('evenodd');ctx.stroke()}
+  }
+  ctx.restore();
+}
+function strokePath(path,lift,t0,t1){
+  const n=path.length/2;
+  const i0=Math.max(0,Math.floor((t0??0)*(n-1))), i1=Math.min(n-1,Math.ceil((t1??1)*(n-1)));
+  ctx.beginPath();let st=false,pv=null;
+  for(let i=i0;i<=i1;i++){
+    const t=i/(n-1), l=lift?lift*Math.sin(Math.PI*t):0;
+    const p=proj(path[i*2],path[i*2+1],l);
+    if(!p[2]){st=false;pv=null;continue}
+    if(st&&pv&&Math.abs(p[0]-pv[0])>W*.6)ctx.moveTo(p[0],p[1]);
+    else if(st)ctx.lineTo(p[0],p[1]); else ctx.moveTo(p[0],p[1]);
+    st=true;pv=p;
+  }
+  ctx.stroke();
+}
+function ptAt(path,t,lift){
+  const n=path.length/2,f=t*(n-1),i=Math.min(n-2,Math.floor(f)),r=f-i;
+  const lo1=path[i*2],la1=path[i*2+1],lo2=path[i*2+2],la2=path[i*2+3];
+  let dl=lo2-lo1; if(dl>180)dl-=360; if(dl<-180)dl+=360;
+  return proj(lo1+dl*r, la1+(la2-la1)*r, lift?lift*Math.sin(Math.PI*t):0);
+}
+const LIFT=()=>P.type==='globe'?0.055:0;
+
+function drawArcs(active,now){
+  const lift=LIFT();
+  ctx.lineCap='round';ctx.lineWidth=.9;ctx.strokeStyle=C.dim;
+  for(const f of FLIGHTS) if(!active.has(f.id)) strokePath(f.path,lift);
+  for(const f of FLIGHTS){
+    if(!active.has(f.id))continue;
+    const hot=(S.selF===f.id)||(S.hoverF===f.id)||(S.selA&&(f.from===S.selA||f.to===S.selA));
+    const a=proj(f.a.lon,f.a.lat,0), b=proj(f.b.lon,f.b.lat,0);
+    let grad;
+    try{grad=ctx.createLinearGradient(a[0],a[1],b[0],b[1]);
+      grad.addColorStop(0,C.arcA);grad.addColorStop(1,C.arcB)}catch(e){grad=C.arcA}
+    ctx.globalAlpha=(S.selF!==null&&S.selF!==f.id&&!hot)?.30:1;
+    ctx.shadowColor='rgba(247,160,80,.55)';ctx.shadowBlur=hot?16:8;
+    ctx.strokeStyle=hot?'#fff3dc':grad;ctx.lineWidth=hot?2.1:1.25;
+    strokePath(f.path,lift);
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+  }
+  for(const f of FLIGHTS){
+    if(!active.has(f.id))continue;
+    if(S.selF!==null&&S.selF!==f.id)continue;
+    const t=((now/(9000+f.miles*1.6))+f.phase)%1;
+    const p=ptAt(f.path,t,lift); if(!p[2])continue;
+    ctx.globalAlpha=.9;ctx.shadowColor='rgba(255,235,190,.9)';ctx.shadowBlur=10;
+    ctx.strokeStyle='rgba(255,240,210,.75)';ctx.lineWidth=1.9;
+    strokePath(f.path,lift,Math.max(0,t-.055),t);
+    ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(p[0],p[1],2.1,0,TAU);
+    ctx.fillStyle='#fffaf0';ctx.shadowColor='#ffd489';ctx.shadowBlur=12;ctx.fill();
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+  }
+}
+function drawAirports(traffic){
+  SCREEN={};
+  for(const code in AIR){
+    const a=AIR[code],p=proj(a.lon,a.lat,0);
+    SCREEN[code]={x:p[0],y:p[1],vis:p[2]};
+    if(!p[2])continue;
+    const n=traffic[code]||0, on=n>0, hot=S.selA===code||S.hoverA===code;
+    const r=on?2.0+Math.min(3.4,Math.sqrt(n)*.95):1.4;
+    if(on){const g=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],r*4.6);
+      g.addColorStop(0,'rgba(255,214,140,.42)');g.addColorStop(1,'rgba(255,214,140,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(p[0],p[1],r*4.6,0,TAU);ctx.fill()}
+    ctx.beginPath();ctx.arc(p[0],p[1],r,0,TAU);
+    ctx.fillStyle=hot?'#fff':(on?'#ffe6b8':'rgba(180,208,232,.42)');
+    ctx.shadowColor='rgba(255,220,160,.9)';ctx.shadowBlur=on?9:0;ctx.fill();ctx.shadowBlur=0;
+    if(hot){ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(p[0],p[1],r+4.5,0,TAU);ctx.stroke()}
+  }
+  const top=Object.entries(traffic).sort((a,b)=>b[1]-a[1]).slice(0,14).map(e=>e[0]);
+  ctx.font='600 9.5px ui-monospace,Menlo,monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+  const placed=[];
+  for(const code of top){
+    const s=SCREEN[code];if(!s||!s.vis)continue;
+    const x=s.x+8,y=s.y-8.5;
+    if(placed.some(q=>Math.abs(q[0]-x)<40&&Math.abs(q[1]-y)<12))continue;
+    placed.push([x,y]);
+    const w=ctx.measureText(code).width;
+    ctx.fillStyle='rgba(6,12,18,.72)';roundRect(x-3.5,y-6.5,w+7,13,3);ctx.fill();
+    ctx.fillStyle=S.selA===code?'#ffd489':'rgba(226,240,250,.92)';ctx.fillText(code,x,y+.5);
+  }
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(64,now-last);last=now;
+  if(S.tween){
+    const t=Math.min(1,(now-S.tween.t0)/S.tween.dur);
+    const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    S.rot[0]=S.tween.a0+shortest(S.tween.a0,S.tween.a1)*e;
+    S.rot[1]=S.tween.b0+(S.tween.b1-S.tween.b0)*e;
+    if(t>=1)S.tween=null;
+  }else if(S.spin&&!S.drag&&S.mode==='globe'&&!modalOpen) S.rot[0]-=dt*.0042;
+  S.rot[0]=((S.rot[0]+180)%360+360)%360-180;
+  S.rot[1]=Math.max(-82,Math.min(82,S.rot[1]));
+  updateProj();
+  const {active,traffic}=filterSet();
+  drawOcean();drawGraticule();drawLand();drawArcs(active,now);drawAirports(traffic);
+  hitTest();
+  requestAnimationFrame(frame);
+}
+function shortest(a,b){let d=(b-a)%360;if(d>180)d-=360;if(d<-180)d+=360;return d}
+
+/* ===================== filtering ===================== */
+let CACHE={key:'',val:null};
+function filtered(){
+  const key=[S.year,S.airline,S.q,S.selA,LOG.length].join('|');
+  if(CACHE.key===key)return CACHE.val;
+  const q=S.q.trim().toUpperCase();
+  const list=FLIGHTS.filter(f=>{
+    if(S.year!=='all'&&f.year!==+S.year)return false;
+    if(S.airline!=='all'&&f.airline!==S.airline)return false;
+    if(S.selA&&f.from!==S.selA&&f.to!==S.selA)return false;
+    if(q){const hay=(f.from+' '+f.to+' '+f.airline+' '+f.date+' '+f.num+' '+f.a.c+' '+f.b.c+' '+f.a.co+' '+f.b.co+' '+f.note).toUpperCase();
+      if(!hay.includes(q))return false}
+    return true;
+  });
+  CACHE={key,val:list};return list;
+}
+function filterSet(){
+  const list=filtered(),active=new Set(),traffic={};
+  for(const f of list){active.add(f.id);traffic[f.from]=(traffic[f.from]||0)+1;traffic[f.to]=(traffic[f.to]||0)+1}
+  return {active,traffic,list};
+}
+
+/* ===================== map interaction ===================== */
+let dragFrom=null,moved=0;
+cv.addEventListener('pointerdown',e=>{S.drag=true;moved=0;
+  dragFrom=[e.clientX,e.clientY,S.rot[0],S.rot[1],S.mpan[0],S.mpan[1]];
+  S.tween=null;cv.setPointerCapture(e.pointerId);cv.classList.add('dragging')});
+cv.addEventListener('pointermove',e=>{
+  const r=cv.getBoundingClientRect();S.mouse=[e.clientX-r.left,e.clientY-r.top];
+  if(S.drag&&dragFrom){
+    const dx=e.clientX-dragFrom[0],dy=e.clientY-dragFrom[1];
+    moved=Math.max(moved,Math.hypot(dx,dy));
+    if(S.mode==='globe'){const k=.26/Math.max(.45,S.zoom);
+      S.rot[0]=dragFrom[2]+dx*k;S.rot[1]=dragFrom[3]+dy*k}
+    else{S.mpan[0]=dragFrom[4]+dx;S.mpan[1]=dragFrom[5]+dy}
+  }});
+addEventListener('pointerup',()=>{if(S.drag&&moved<4)clickAt();S.drag=false;dragFrom=null;cv.classList.remove('dragging')});
+cv.addEventListener('pointerleave',()=>{S.mouse=null;S.hoverA=null;$('#tip').classList.remove('show')});
+cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(-e.deltaY*.0016);
+  if(S.mode==='globe')S.zoom=Math.max(.6,Math.min(6,S.zoom*f));
+  else S.mzoom=Math.max(.7,Math.min(9,S.mzoom*f))},{passive:false});
+
+const tip=$('#tip');
+function hitTest(){
+  if(!S.mouse||S.drag){if(S.drag)tip.classList.remove('show');return}
+  const [mx,my]=S.mouse;let best=null,bd=15;
+  for(const code in SCREEN){const s=SCREEN[code];if(!s.vis)continue;
+    const d=Math.hypot(s.x-mx,s.y-my);if(d<bd){bd=d;best=code}}
+  S.hoverA=best;
+  if(best){
+    const a=AIR[best],t=filterSet().traffic[best]||0;
+    const mi=FLIGHTS.filter(f=>f.from===best||f.to===best).reduce((s,f)=>s+f.miles,0);
+    tip.innerHTML='<div class="t1">'+best+'</div><div class="t2">'+esc(a.n)+(a.c?' · '+esc(a.c):'')+', '+esc(a.co)+'</div>'+
+      '<div class="t3">'+t+' visit'+(t===1?'':'s')+' · '+fmt(mi)+' mi total</div>';
+    tip.style.left=SCREEN[best].x+'px';tip.style.top=(SCREEN[best].y-6)+'px';
+    tip.classList.add('show');cv.style.cursor='pointer';
+  }else{tip.classList.remove('show');cv.style.cursor=S.drag?'grabbing':'grab'}
+}
+function clickAt(){
+  if(S.hoverA){S.selA=(S.selA===S.hoverA)?null:S.hoverA;S.selF=null;render()}
+  else if(S.selA||S.selF!==null){S.selA=null;S.selF=null;render()}
+}
+function focusOn(f){const n=f.path.length/2,i=Math.floor(n/2);spinTo(f.path[i*2],f.path[i*2+1])}
+function spinTo(lon,lat){if(S.mode!=='globe')return;
+  S.tween={t0:performance.now(),dur:900,a0:S.rot[0],a1:lon,b0:S.rot[1],b1:Math.max(-60,Math.min(60,lat))}}
+
+/* ===================== combobox ===================== */
+function Combo(host,opts){
+  const el=typeof host==='string'?$(host):host;
+  el.innerHTML='<input type="text" placeholder="'+opts.placeholder+'" autocomplete="off" spellcheck="false">'+
+    '<div class="picked"></div><div class="menu"></div>';
+  const input=el.querySelector('input'), menu=el.querySelector('.menu'), badge=el.querySelector('.picked');
+  let items=[], cur=-1, value=null;
+  function show(list){
+    items=list;cur=list.length?0:-1;
+    menu.innerHTML=list.length? list.map((o,i)=>
+      '<div class="opt'+(o.isNew?' new':'')+(i===0?' cur':'')+'" data-i="'+i+'">'+
+      '<div class="code">'+esc(o.code)+'</div><div class="nm">'+esc(o.name)+'</div>'+
+      (o.sub?'<div class="sub">'+esc(o.sub)+'</div>':'')+'</div>').join('')
+      : '<div class="mnote">No match</div>';
+    menu.classList.add('show');
+    menu.querySelectorAll('.opt').forEach(d=>{
+      d.onmousedown=e=>{e.preventDefault();pick(items[+d.dataset.i])};
+    });
+  }
+  function hide(){menu.classList.remove('show')}
+  function pick(o){
+    if(!o)return;
+    value=o.value; input.value=o.label;
+    badge.textContent=o.badge||''; hide(); opts.onchange&&opts.onchange(value);
+  }
+  input.addEventListener('input',()=>{value=null;badge.textContent='';show(opts.search(input.value));opts.onchange&&opts.onchange(null)});
+  input.addEventListener('focus',()=>show(opts.search(input.value)));
+  input.addEventListener('blur',()=>setTimeout(()=>{
+    hide();
+    if(!value){const l=opts.search(input.value);
+      if(input.value.trim()&&l.length)pick(l[0]); else if(!input.value.trim()){badge.textContent=''}}
+  },110));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();if(!items.length)return;
+      cur=(cur+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;
+      menu.querySelectorAll('.opt').forEach((d,i)=>d.classList.toggle('cur',i===cur));
+      const c=menu.querySelector('.opt.cur');c&&c.scrollIntoView({block:'nearest'});
+    } else if(e.key==='Enter'){ if(menu.classList.contains('show')&&cur>=0){e.preventDefault();pick(items[cur])} }
+    else if(e.key==='Escape'){ if(menu.classList.contains('show')){e.stopPropagation();hide()} }
+  });
+  return {
+    el,input,
+    get value(){return value},
+    set(v,label,badgeTx){value=v;input.value=label||'';badge.textContent=badgeTx||''},
+    clear(){value=null;input.value='';badge.textContent=''},
+    focus(){input.focus();input.select()}
+  };
+}
+/* airport search */
+const AP_KEYS=Object.keys(REF.ap);
+function searchAirport(qRaw){
+  const q=(qRaw||'').trim().toUpperCase();
+  const out=[];
+  const push=code=>{const a=apOf(code);
+    out.push({value:code,code,name:a.c||a.n,sub:a.co,label:code+' — '+(a.c||a.n),badge:''})};
+  if(!q){ for(const c of recentAirports().slice(0,8)) if(REF.ap[c]) push(c); return out }
+  if(REF.ap[q]) push(q);
+  const starts=[],has=[];
+  for(const c of AP_KEYS){
+    if(c===q)continue;
+    const a=REF.ap[c];
+    const hay=(c+' '+a[1]+' '+a[0]+' '+a[2]).toUpperCase();
+    if(c.startsWith(q)||(a[1]||'').toUpperCase().startsWith(q))starts.push(c);
+    else if(hay.includes(q))has.push(c);
+    if(starts.length>40)break;
+  }
+  for(const c of starts.slice(0,10))push(c);
+  for(const c of has.slice(0,10))push(c);
+  return out.slice(0,20);
+}
+function recentAirports(){
+  const seen=[];
+  for(let i=LOG.length-1;i>=0;i--){for(const c of [LOG[i].to,LOG[i].from]) if(!seen.includes(c))seen.push(c)}
+  return seen;
+}
+/* airline search — mine first, then the world, then "create" */
+function myAirlines(){
+  const m={};for(const r of LOG) if(r.airline)m[r.airline]=(m[r.airline]||0)+1;
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+}
+function searchAirline(qRaw){
+  const q=(qRaw||'').trim(), Q=q.toUpperCase(), out=[], used=new Set();
+  const mine=myAirlines();
+  for(const n of mine){
+    if(Q&&!n.toUpperCase().includes(Q))continue;
+    const ref=REF.al.find(a=>a[0]===n);
+    out.push({value:n,code:ref&&ref[1]?ref[1]:'✈',name:n,sub:'yours',label:n});
+    used.add(n.toUpperCase());
+    if(out.length>=6)break;
+  }
+  if(Q){
+    for(const [name,iata] of REF.al){
+      if(used.has(name.toUpperCase()))continue;
+      const nu=name.toUpperCase();
+      if(!(nu.startsWith(Q)||iata===Q||nu.includes(Q)))continue;
+      out.push({value:name,code:iata||'✈',name,sub:'',label:name});
+      used.add(nu);
+      if(out.length>=18)break;
+    }
+    if(!used.has(Q)) out.push({value:q,code:'+',name:'Use “'+q+'”',sub:'new airline',label:q,isNew:true});
+  }else{
+    for(const [name,iata] of REF.al.slice(0,14)){
+      if(used.has(name.toUpperCase()))continue;
+      out.push({value:name,code:iata||'✈',name,sub:'',label:name});
+    }
+  }
+  return out;
+}
+
+/* ===================== add / edit modal ===================== */
+let modalOpen=false, editing=null;
+const cFrom=Combo('#cFrom',{placeholder:'SFO or San Francisco',search:searchAirport,onchange:previewLegs});
+const cTo  =Combo('#cTo',  {placeholder:'DUB or Dublin',      search:searchAirport,onchange:previewLegs});
+const cAir =Combo('#cAir', {placeholder:'Type any airline',   search:searchAirline, onchange:previewLegs});
+let rt=true;
+function setRT(v){rt=v;$('#tRT').classList.toggle('on',rt);$('#rtFields').style.display=rt?'flex':'none';previewLegs()}
+$('#tRT').onclick=()=>setRT(!rt);
+$('#bSwap').onclick=()=>{
+  const a={v:cFrom.value,l:cFrom.input.value}, b={v:cTo.value,l:cTo.input.value};
+  cFrom.set(b.v,b.l);cTo.set(a.v,a.l);previewLegs();
+};
+['#iMi','#iDur','#iDate','#iDate2'].forEach(s=>$(s).addEventListener('input',previewLegs));
+
+function legInfo(){
+  const A=cFrom.value?apOf(cFrom.value):null, B=cTo.value?apOf(cTo.value):null;
+  if(!A||!B||A.code===B.code)return null;
+  const manualMi=parseFloat(($('#iMi').value||'').replace(/[, ]/g,''));
+  const mi=Number.isFinite(manualMi)&&manualMi>0?Math.round(manualMi):Math.round(haversine(A,B));
+  const manualDur=parseDur($('#iDur').value);
+  const mins=manualDur??estMins(mi);
+  return {A,B,mi,mins};
+}
+function previewLegs(){
+  const L=legInfo(), p=$('#prev');
+  if(!L){p.innerHTML='Pick two different airports to see the route.';validate();return}
+  const d1=$('#iDate').value||'—', d2=$('#iDate2').value||d1;
+  let html='<div class="leg"><span><b>'+L.A.code+' → '+L.B.code+'</b> · '+esc(L.A.c||L.A.n)+' to '+esc(L.B.c||L.B.n)+'</span>'+
+    '<span>'+d1+'</span></div>';
+  if(rt) html+='<div class="leg"><span><b>'+L.B.code+' → '+L.A.code+'</b> · return leg</span><span>'+d2+'</span></div>';
+  const legs=rt?2:1;
+  html+='<div class="leg" style="margin-top:5px;border-top:1px dotted rgba(140,180,215,.2);padding-top:6px">'+
+    '<span>'+legs+' segment'+(legs>1?'s':'')+'</span><span><b>'+fmt(L.mi*legs)+' mi</b> · '+hrs(L.mins*legs)+'</span></div>';
+  p.innerHTML=html;
+  $('#iMi').placeholder=fmt(L.mi); $('#iDur').placeholder=hhmm(L.mins);
+  validate();
+}
+function validate(){
+  const L=legInfo(), d=$('#iDate').value;
+  let msg='';
+  if(cFrom.value&&cTo.value&&cFrom.value===cTo.value)msg='Origin and destination match';
+  else if(!L)msg='';
+  else if(!d)msg='Pick a departure date';
+  else if(rt&&$('#iDate2').value&&$('#iDate2').value<d)msg='Return is before departure';
+  else if($('#iDur').value.trim()&&parseDur($('#iDur').value)===null)msg='Duration must look like 5:33';
+  $('#mWarn').textContent=msg;
+  const ok=!!L&&!!d&&!msg;
+  $('#mSave').disabled=!ok; $('#mAnother').style.display=editing?'none':'';
+  return ok;
+}
+function openModal(pre){
+  modalOpen=true; editing=pre&&pre.edit!=null?pre.edit:null;
+  $('#mtitle').textContent=editing!=null?'Edit flight':'New flight';
+  $('#mSave').textContent=editing!=null?'Save changes':'Save flight';
+  $('#rtWrap').style.display=editing!=null?'none':'';
+  const set=(c,code)=>{if(code&&REF.ap[code]){const a=apOf(code);c.set(code,code+' — '+(a.c||a.n))}else c.clear()};
+  set(cFrom,pre&&pre.from); set(cTo,pre&&pre.to);
+  if(pre&&pre.airline){const ref=REF.al.find(a=>a[0]===pre.airline);cAir.set(pre.airline,pre.airline,ref&&ref[1]?ref[1]:'')}
+  else cAir.clear();
+  $('#iDate').value=(pre&&pre.date)||new Date().toISOString().slice(0,10);
+  $('#iDate2').value=(pre&&pre.date2)||'';
+  $('#iNum').value=(pre&&pre.num)||''; $('#iNum2').value='';
+  $('#iCls').value=(pre&&pre.cls)||''; $('#iNote').value=(pre&&pre.note)||'';
+  $('#iMi').value=(pre&&pre.miles)||''; $('#iDur').value=(pre&&pre.dur)||'';
+  setRT(editing!=null?false:(pre?pre.rt!==false:true));
+  $('#scrim').classList.add('show');
+  previewLegs();
+  setTimeout(()=>{ (cFrom.value?(cTo.value?$('#iDate'):cTo.input):cFrom.input).focus(); },40);
+}
+function closeModal(){modalOpen=false;editing=null;$('#scrim').classList.remove('show')}
+$('#mClose').onclick=closeModal; $('#mCancel').onclick=closeModal;
+$('#scrim').addEventListener('mousedown',e=>{if(e.target===$('#scrim'))closeModal()});
+
+function commit(keepOpen){
+  if(!validate())return;
+  const L=legInfo();
+  const airline=cAir.value||cAir.input.value.trim()||'';
+  const d1=$('#iDate').value, d2=$('#iDate2').value||d1;
+  const base={airline,miles:L.mi,dur:hhmm(L.mins),cls:$('#iCls').value,note:$('#iNote').value.trim()};
+  let anchor;
+  if(editing!=null){
+    Object.assign(editing,base,{from:L.A.code,to:L.B.code,date:d1,num:$('#iNum').value.trim()});
+    anchor=editing; opUpdate(editing); toast('Flight updated');
+  }else{
+    const recs=[{...base,from:L.A.code,to:L.B.code,date:d1,num:$('#iNum').value.trim()}];
+    if(rt) recs.push({...base,from:L.B.code,to:L.A.code,date:d2,num:$('#iNum2').value.trim()});
+    anchor=recs[0]; opAdd(recs);
+    toast(rt?'Round trip added — 2 segments':'Flight added');
+  }
+  const shown=FLIGHTS.find(f=>f.rec===anchor);
+  if(shown&&S.mode==='globe')focusOn(shown);
+  if(keepOpen){
+    cFrom.set(L.B.code,L.B.code+' — '+(L.B.c||L.B.n)); cTo.clear();
+    $('#iNum').value='';$('#iNum2').value='';$('#iMi').value='';$('#iDur').value='';
+    previewLegs(); cTo.focus();
+  } else closeModal();
+}
+$('#mSave').onclick=()=>commit(false);
+$('#mAnother').onclick=()=>commit(true);
+$('#bAdd').onclick=()=>openModal(null);
+
+function addReturn(f){
+  openModal({from:f.to,to:f.from,airline:f.airline,date:f.date,rt:false,
+    miles:f.miles,dur:f.dur,cls:f.cls});
+  toast('Return leg pre-filled');
+}
+function delFlight(f){
+  if(LOG.indexOf(f.rec)<0)return;
+  if(S.selF===f.id)S.selF=null;
+  opDelete(f.rec); toast('Flight removed');
+}
+
+/* ===================== CSV ===================== */
+const CSV_COLS=['Date','From','To','Flight_Number','Airline','Distance','Duration','Seat','Seat_Type',
+  'Class','Reason','Plane','Registration','Trip','Note'];
+function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCSV(){
+  const rows=[CSV_COLS.join(',')];
+  for(const f of FLIGHTS) rows.push([f.date,f.from,f.to,f.num,f.airline,f.miles,f.dur,'','',
+    f.cls,'','','','',f.note].map(csvCell).join(','));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='flight-log-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Exported '+FLIGHTS.length+' segments');
+}
+function parseCSV(text){
+  const rows=[];let row=[],cell='',q=false;
+  text=text.replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++} else q=false } else cell+=c }
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cell);cell=''}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell=''}
+    else if(c!=='\r')cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)}
+  return rows.filter(r=>r.length>1);
+}
+function importCSV(text){
+  const rows=parseCSV(text); if(!rows.length)return toast('Empty file');
+  const head=rows[0].map(h=>h.trim().toLowerCase());
+  const ix=n=>head.indexOf(n);
+  const iD=ix('date'),iF=ix('from'),iT=ix('to'),iA=ix('airline'),iN=ix('flight_number'),
+        iM=ix('distance'),iU=ix('duration'),iC=ix('class'),iNo=ix('note');
+  if(iD<0||iF<0||iT<0)return toast('Not an OpenFlights CSV');
+  const add=[];let skipped=0;
+  for(const r of rows.slice(1)){
+    const from=(r[iF]||'').trim().toUpperCase(), to=(r[iT]||'').trim().toUpperCase();
+    const date=(r[iD]||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!REF.ap[from]||!REF.ap[to]){skipped++;continue}
+    const mi=parseInt((r[iM]||'').replace(/[^\d]/g,''),10);
+    add.push({date,from,to,airline:(r[iA]||'').trim(),num:iN>=0?(r[iN]||'').trim():'',
+      miles:Number.isFinite(mi)&&mi>0?mi:Math.round(haversine(apOf(from),apOf(to))),
+      dur:iU>=0?(r[iU]||'').trim():'',cls:iC>=0?(r[iC]||'').trim():'',note:iNo>=0?(r[iNo]||'').trim():''});
+  }
+  if(!add.length)return toast('No usable rows'+(skipped?' ('+skipped+' skipped)':''));
+  const replace=confirm(add.length+' flights found.\n\nOK = replace the current log\nCancel = merge into it');
+  opReplace(replace?add:LOG.concat(add));
+  toast((replace?'Imported ':'Merged ')+add.length+(skipped?' · '+skipped+' skipped':''));
+}
+$('#bExport').onclick=exportCSV;
+$('#bImport').onclick=()=>$('#fileIn').click();
+$('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>importCSV(r.result);r.readAsText(f);e.target.value=''};
+if(!SEED.length) $('#bRevert').style.display='none';
+$('#bRevert').onclick=()=>{
+  const where=MODE==='cloud'?'in your account':'in this browser';
+  if(!confirm('Replace every flight '+where+' with the '+SEED.length+' from the bundled import?'))return;
+  opReplace(SEED.map(r=>({...r}))); toast('Reverted to the bundled log');
+};
+
+/* ===================== sidebar ===================== */
+const bodyEl=$('#body');
+function buildYears(){
+  const years=FLIGHTS.map(f=>f.year);
+  const byYear={};for(const f of FLIGHTS)byYear[f.year]=(byYear[f.year]||0)+f.miles;
+  const y0=years.length?Math.min(...years):new Date().getFullYear();
+  const y1=years.length?Math.max(...years):y0;
+  const max=Math.max(1,...Object.values(byYear));
+  const all=[];for(let y=y0;y<=y1;y++)all.push(y);
+  $('#yrs').innerHTML=all.map(y=>{
+    const m=byYear[y]||0,h=Math.max(2,Math.round(m/max*40));
+    return '<div class="yr'+(m?'':' off')+'" data-y="'+y+'" title="'+y+' · '+fmt(m)+' mi">'+
+      '<div class="b" style="height:'+h+'px"></div><div class="l">'+String(y).slice(2)+'</div></div>';
+  }).join('');
+  $('#time').style.display=FLIGHTS.length?'':'none';
+  $('#yrs').querySelectorAll('.yr').forEach(el=>el.onclick=()=>{
+    const y=el.dataset.y;S.year=(S.year===y)?'all':y;S.selF=null;render()});
+  $('#mastsub').textContent=FLIGHTS.length
+    ? y0+' — '+y1+' · '+FLIGHTS.length+' segments'
+    : 'no flights logged yet';
+  $('#range').textContent=FLIGHTS.length
+    ? 'First '+FLIGHTS[0].date+' · latest '+FLIGHTS[FLIGHTS.length-1].date
+    : 'Add one, or import an OpenFlights CSV';
+  const cur=$('#fAir').value||'all';
+  const als=[...new Set(FLIGHTS.map(f=>f.airline))].sort();
+  $('#fAir').innerHTML='<option value="all">ALL AIRLINES</option>'+
+    als.map(a=>'<option value="'+esc(a)+'"'+(a===cur?' selected':'')+'>'+esc(a.toUpperCase())+'</option>').join('');
+  if(!als.includes(cur))S.airline='all';
+}
+function render(){
+  CACHE.key='';
+  const list=filtered();
+  renderStats(list);
+  document.querySelectorAll('#yrs .yr').forEach(el=>el.classList.toggle('on',S.year===el.dataset.y));
+  $('#tsel').textContent=S.year==='all'?(S.selA?S.selA+' only':'All years'):S.year;
+  if(S.tab==='flights')renderFlights(list);
+  else if(S.tab==='routes')renderRoutes(list);
+  else renderAnalysis(list);
+}
+function renderStats(list){
+  const miles=list.reduce((s,f)=>s+f.miles,0), mins=list.reduce((s,f)=>s+f.mins,0);
+  const aps=new Set(),cos=new Set();
+  for(const f of list){aps.add(f.from);aps.add(f.to);cos.add(f.a.co);cos.add(f.b.co)}
+  const cells=[[fmt(list.length),'Segments'],[fmt(miles),'Miles'],[hrs(mins),'In the air'],
+    [aps.size,'Airports'],[cos.size,'Countries'],[(miles/24901).toFixed(2)+'<small>×</small>','Round Earth']];
+  $('#stats').innerHTML=cells.map(c=>'<div class="stat"><div class="v">'+c[0]+'</div><div class="k">'+c[1]+'</div></div>').join('');
+}
+function renderFlights(list){
+  if(!list.length){
+    bodyEl.innerHTML='<div class="empty">'+(LOG.length
+      ? 'NO FLIGHTS MATCH'
+      : 'NOTHING LOGGED YET<br><br>ADD A FLIGHT, OR HIT&nbsp;↑&nbsp;TO IMPORT<br>AN OPENFLIGHTS CSV')+'</div>';
+    return}
+  bodyEl.innerHTML=[...list].reverse().map(f=>{
+    const d=dstr(f.date);
+    return '<div class="row'+(S.selF===f.id?' sel':'')+'" data-id="'+f.id+'">'+
+      '<div class="date"><b>'+d.top+'</b>'+d.bot+'</div>'+
+      '<div><div class="pair">'+f.from+' <i>→</i> '+f.to+'</div>'+
+      '<div class="al">'+esc(f.airline)+(f.num?' · '+esc(f.num):'')+'</div></div>'+
+      '<div class="num">'+fmt(f.miles)+'<s>'+f.dur+'</s></div>'+
+      '<div class="acts"><div class="act rt" data-a="rt" title="Add the return leg">⇄</div>'+
+      '<div class="act" data-a="ed" title="Edit">✎</div>'+
+      '<div class="act del" data-a="rm" title="Delete">✕</div></div></div>';
+  }).join('');
+  bodyEl.querySelectorAll('.row').forEach(r=>{
+    const f=FLIGHTS[+r.dataset.id];
+    r.onclick=e=>{
+      const a=e.target.closest('.act');
+      if(a){e.stopPropagation();
+        if(a.dataset.a==='rt')addReturn(f);
+        else if(a.dataset.a==='ed')openModal({edit:f.rec,from:f.from,to:f.to,airline:f.airline,
+          date:f.date,num:f.num,cls:f.cls,note:f.note,miles:f.miles,dur:f.dur});
+        else if(confirm('Delete '+f.from+' → '+f.to+' on '+f.date+'?'))delFlight(f);
+        return}
+      S.selF=(S.selF===f.id)?null:f.id; if(S.selF!==null)focusOn(f); render();
+    };
+    r.onmouseenter=()=>S.hoverF=f.id;
+    r.onmouseleave=()=>{if(S.hoverF===f.id)S.hoverF=null};
+  });
+}
+function renderRoutes(list){
+  const m={};
+  for(const f of list){
+    const k=[f.from,f.to].sort().join('–');
+    (m[k]=m[k]||{k,n:0,mi:0,al:new Set()});m[k].n++;m[k].mi+=f.miles;m[k].al.add(f.airline);
+  }
+  const arr=Object.values(m).sort((a,b)=>b.mi-a.mi);
+  if(!arr.length){bodyEl.innerHTML='<div class="empty">NO ROUTES MATCH</div>';return}
+  bodyEl.innerHTML='<div class="sec"><div class="lbl">'+arr.length+' unique routes · ranked by miles</div>'+
+    arr.map(r=>{const p=r.k.split('–');
+      return '<div class="row" style="padding:9px 0;grid-template-columns:1fr auto;cursor:default">'+
+        '<div><div class="pair">'+p[0]+' <i>⇄</i> '+p[1]+'</div>'+
+        '<div class="al">'+esc([...r.al].join(', '))+'</div></div>'+
+        '<div class="num">'+fmt(r.mi)+'<s>'+r.n+'× flown</s></div></div>'}).join('')+'</div>';
+}
+function renderAnalysis(list){
+  if(!list.length){bodyEl.innerHTML='<div class="empty">NOTHING TO ANALYSE</div>';return}
+  const traffic={},alMiles={},coCount={},yrMiles={};
+  for(const f of list){
+    traffic[f.from]=(traffic[f.from]||0)+1;traffic[f.to]=(traffic[f.to]||0)+1;
+    alMiles[f.airline]=(alMiles[f.airline]||0)+f.miles;
+    coCount[f.a.co]=(coCount[f.a.co]||0)+1;coCount[f.b.co]=(coCount[f.b.co]||0)+1;
+    yrMiles[f.year]=(yrMiles[f.year]||0)+f.miles;
+  }
+  const byMi=[...list].sort((a,b)=>b.miles-a.miles);
+  const longest=byMi[0],shortest=byMi[byMi.length-1];
+  const bigYear=Object.entries(yrMiles).sort((a,b)=>b[1]-a[1])[0];
+  const miles=list.reduce((s,f)=>s+f.miles,0),mins=list.reduce((s,f)=>s+f.mins,0);
+  const block=(title,obj,unit,n)=>{
+    const arr=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
+    const max=arr[0][1];
+    return '<div class="sec"><div class="lbl">'+title+'</div>'+arr.map(e=>
+      '<div class="bar"><div class="n" title="'+esc(e[0])+'">'+esc(e[0])+'</div>'+
+      '<div class="t"><div style="width:'+Math.max(3,e[1]/max*100)+'%"></div></div>'+
+      '<div class="q">'+(unit==='mi'?fmt(e[1]):e[1]+'×')+'</div></div>').join('')+'</div>';
+  };
+  bodyEl.innerHTML=block('Most visited airports',traffic,'x',8)+
+    block('Miles by airline',alMiles,'mi',8)+
+    block('Countries touched',coCount,'x',8)+
+    '<div class="sec"><div class="lbl">Records</div>'+
+      fact('Longest leg','<em>'+longest.from+'→'+longest.to+'</em> '+fmt(longest.miles)+' mi')+
+      fact('Shortest leg','<em>'+shortest.from+'→'+shortest.to+'</em> '+fmt(shortest.miles)+' mi')+
+      fact('Average leg',fmt(miles/list.length)+' mi · '+hrs(Math.round(mins/list.length)))+
+      fact('Biggest year','<em>'+bigYear[0]+'</em> '+fmt(bigYear[1])+' mi')+
+      fact('Average speed',fmt(miles/(mins/60))+' mph')+
+      fact('Toward the Moon',(miles/238900*100).toFixed(1)+'% of the way')+
+      fact('Carbon, roughly','~'+fmt(miles*0.15)+' kg CO₂e')+
+    '</div>';
+}
+const fact=(k,v)=>'<div class="fact"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
+
+/* ===================== chrome wiring ===================== */
+$('#fAir').onchange=e=>{S.airline=e.target.value;render()};
+$('#fQ').oninput=e=>{S.q=e.target.value;render()};
+document.querySelectorAll('#ctl [data-mode]').forEach(b=>b.onclick=()=>{
+  S.mode=b.dataset.mode;
+  document.querySelectorAll('#ctl [data-mode]').forEach(x=>x.classList.toggle('on',x===b));
+  $('#hint').textContent=(S.mode==='globe'?'DRAG TO ROTATE':'DRAG TO PAN')+
+    ' · SCROLL TO ZOOM · CLICK AN AIRPORT · N FOR NEW FLIGHT';
+});
+$('#spin').onclick=()=>{S.spin=!S.spin;$('#spin').classList.toggle('on',S.spin)};
+$('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null;S.year='all';
+  S.airline='all';S.q='';$('#fAir').value='all';$('#fQ').value='';spinTo(30,22);render()};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  S.tab=t.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));render()});
+addEventListener('keydown',e=>{
+  if(modalOpen){
+    if(e.key==='Escape')closeModal();
+    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))commit(false);
+    return;
+  }
+  const typing=/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if(e.key==='Escape'){S.selA=null;S.selF=null;render()}
+  if(typing)return;
+  if(e.key==='n'||e.key==='N'){e.preventDefault();openModal(null)}
+  if(e.key===' '){e.preventDefault();$('#spin').click()}
+});
+
+addEventListener('online',()=>{ if(MODE==='cloud') resync().catch(()=>setStatus('error','not synced')) });
+addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&MODE==='cloud'&&!modalOpen)
+    resync().catch(()=>setStatus('error','not synced'));
+});
+
+/* ===================== accounts ===================== */
+let gateMode='in';
+const gate=$('#gate');
+function showGate(panel){
+  const setup = panel==='setup' || !configured();
+  $('#gSetup').classList.toggle('on',setup);
+  $('#gAuth').classList.toggle('on',!setup);
+  $('#gCfg').style.display=setup?'none':'';
+  if(!setup){
+    $('#sbMsg').textContent='';
+    setTimeout(()=>$('#gEmail').focus(),80);
+  }else{
+    $('#sbUrl').value=CFG.url; $('#sbKey').value=CFG.key;
+  }
+  gate.classList.add('show');
+}
+function hideGate(){gate.classList.remove('show')}
+function gmsg(el,text,kind){const m=$(el);m.textContent=text||'';m.className='gmsg'+(kind?' '+kind:'')}
+
+function updateAccount(){
+  const em=$('#acctEm'), av=$('#acctAv'), btn=$('#acctBtn');
+  if(MODE==='cloud'&&session){
+    const mail=session.user.email||'signed in';
+    em.textContent=mail;
+    av.textContent=(mail[0]||'?').toUpperCase(); av.classList.remove('guest');
+    btn.textContent='Sign out';
+    setStatus('ok',LOG.length+' flights synced');
+  }else{
+    em.textContent='Not signed in';
+    av.textContent='·'; av.classList.add('guest');
+    btn.textContent=configured()?'Sign in':'Connect';
+    setStatus('','this browser only');
+  }
+}
+$('#acctBtn').onclick=async()=>{
+  if(MODE==='cloud'){
+    if(!confirm('Sign out of '+session.user.email+'?\n\nYour flights stay in your account.'))return;
+    await sb.auth.signOut();
+  } else showGate(configured()?null:'setup');
+};
+
+/* first sign-in on a browser that already has flights: offer to bring them up */
+async function enterCloud(){
+  setStatus('sync','syncing');
+  try{
+    const rows=await cloudList();
+    if(!rows.length&&LOG.length&&
+       confirm('This account has no flights yet.\n\nUpload the '+LOG.length+
+               ' flights currently loaded in this browser?')){
+      await cloudInsert(LOG);
+      LOG=await cloudList();
+      toast('Uploaded '+LOG.length+' flights');
+    } else LOG=rows;
+    setStatus('ok',LOG.length+' flights synced');
+  }catch(e){ syncFail(e) }
+  refreshAll();
+}
+
+function wireAuth(){
+  if(!sb)return;
+  sb.auth.onAuthStateChange(async(evt,s)=>{
+    session=s||null;
+    if(session){
+      if(MODE!=='cloud'){ MODE='cloud'; await enterCloud() }
+      hideGate();
+    }else{
+      MODE='guest'; LOG=loadLocal(); refreshAll();
+    }
+    updateAccount();
+  });
+}
+
+document.querySelectorAll('.gtab').forEach(t=>t.onclick=()=>{
+  gateMode=t.dataset.g;
+  document.querySelectorAll('.gtab').forEach(x=>x.classList.toggle('on',x===t));
+  $('#gGo').textContent=gateMode==='in'?'Sign in':'Create account';
+  $('#gPw').setAttribute('autocomplete',gateMode==='in'?'current-password':'new-password');
+  gmsg('#gMsg','');
+});
+async function doAuth(){
+  const email=$('#gEmail').value.trim(), pw=$('#gPw').value;
+  if(!email||!pw)return gmsg('#gMsg','Email and password, please','err');
+  if(gateMode==='up'&&pw.length<6)return gmsg('#gMsg','Password needs 6+ characters','err');
+  $('#gGo').disabled=true; gmsg('#gMsg','Working…');
+  try{
+    const {data,error}= gateMode==='in'
+      ? await sb.auth.signInWithPassword({email,password:pw})
+      : await sb.auth.signUp({email,password:pw});
+    if(error)throw error;
+    if(gateMode==='up'&&!data.session){
+      gmsg('#gMsg','Check your inbox to confirm the address, then sign in.','ok');
+    } else gmsg('#gMsg','');
+  }catch(e){ gmsg('#gMsg',e.message||'That did not work','err') }
+  $('#gGo').disabled=false;
+}
+$('#gGo').onclick=doAuth;
+$('#gPw').addEventListener('keydown',e=>{if(e.key==='Enter')doAuth()});
+$('#gEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('#gPw').focus()});
+$('#gMagic').onclick=async()=>{
+  const email=$('#gEmail').value.trim();
+  if(!email)return gmsg('#gMsg','Enter your email first','err');
+  gmsg('#gMsg','Sending…');
+  try{
+    const {error}=await sb.auth.signInWithOtp({email,
+      options:{emailRedirectTo:location.href.split('#')[0]}});
+    if(error)throw error;
+    gmsg('#gMsg','Link sent — open it in this browser.','ok');
+  }catch(e){ gmsg('#gMsg',e.message||'Could not send the link','err') }
+};
+$('#gSkip').onclick=()=>{ try{localStorage.setItem(GKEY,'1')}catch(e){} hideGate() };
+$('#gCfg').onclick=()=>showGate('setup');
+$('#sbSave').onclick=()=>{
+  const url=$('#sbUrl').value.trim().replace(/\/+$/,''), key=$('#sbKey').value.trim();
+  if(!/^https?:\/\/.+/.test(url))return gmsg('#sbMsg','That does not look like a project URL','err');
+  if(key.length<20)return gmsg('#sbMsg','That does not look like an anon key','err');
+  try{localStorage.setItem(CKEY,JSON.stringify({url,key}))}catch(e){}
+  sb=makeClient();
+  if(!sb)return gmsg('#sbMsg','Could not reach that project','err');
+  wireAuth(); updateAccount(); showGate();
+};
+gate.addEventListener('mousedown',e=>{ if(e.target===gate&&localStorage.getItem(GKEY))hideGate() });
+
+/* ===================== go ===================== */
+async function boot(){
+  sb=makeClient();
+  LOG=loadLocal();
+  rebuild(); resize(); buildYears(); render(); requestAnimationFrame(frame);
+  if(!hasLib()&&(CFG.url||CFG.key)) toast('Could not load the Supabase library — offline mode');
+  if(sb){
+    wireAuth();
+    try{
+      const {data}=await sb.auth.getSession();
+      if(data&&data.session){ session=data.session; MODE='cloud'; await enterCloud() }
+    }catch(e){ console.warn(e) }
+  }
+  updateAccount();
+  if(MODE!=='cloud'&&!localStorage.getItem(GKEY)) showGate();
+}
+boot();
+</script>
+</body>
+</html>

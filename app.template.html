@@ -179,6 +179,15 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
   padding:10px 18px;border-radius:9px;cursor:pointer;transition:.16s}
 .prim:hover{filter:brightness(1.08)}
 .prim:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.prim.danger{background:linear-gradient(180deg,#ff9f91,#f2624c);color:#2b0a05}
+.dwarn{display:flex;align-items:baseline;gap:8px;padding:12px 14px;border-radius:10px;
+  background:rgba(255,90,74,.10);border:1px solid rgba(255,90,74,.28)}
+.dwarn b{font-family:var(--mono);font-size:15px;color:#ff9f91}
+.dwarn span{font-size:11px;color:var(--ink-dim)}
+#dscrim{position:fixed;inset:0;z-index:25;background:rgba(4,9,14,.66);backdrop-filter:blur(5px);
+  display:none;align-items:center;justify-content:center;padding:24px}
+#dscrim.show{display:flex}
+#dmodal{width:min(430px,100%);display:flex;flex-direction:column;animation:pop .2s cubic-bezier(.2,.9,.3,1.1)}
 
 /* toggle */
 .tog{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;padding:7px 0}
@@ -431,6 +440,30 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 
     <div class="gfoot">
       <span id="gSkip">Continue without an account →</span>
+    </div>
+  </div>
+</div>
+
+<div id="dscrim">
+  <div id="dmodal" class="glass">
+    <div class="mhead">
+      <h2>Delete every flight</h2>
+      <div class="icb" id="dClose">✕</div>
+    </div>
+    <div class="mbody">
+      <div class="dwarn"><b id="dCount">—</b><span id="dWhere"></span></div>
+      <p class="gnote" style="margin:0">This cannot be undone. Export a copy first if
+        there is any chance you will want these back.</p>
+      <div class="f">
+        <div class="lbl" id="dLabel">Password</div>
+        <input type="password" id="dInput" autocomplete="current-password" spellcheck="false">
+      </div>
+      <div class="gmsg" id="dMsg"></div>
+    </div>
+    <div class="mfoot">
+      <button class="ghost" id="dExport" style="margin-right:auto">Export first</button>
+      <button class="ghost" id="dCancel">Cancel</button>
+      <button class="prim danger" id="dGo" disabled>Delete all</button>
     </div>
   </div>
 </div>
@@ -862,7 +895,7 @@ function frame(now){
     S.rot[0]=S.tween.a0+shortest(S.tween.a0,S.tween.a1)*e;
     S.rot[1]=S.tween.b0+(S.tween.b1-S.tween.b0)*e;
     if(t>=1)S.tween=null;
-  }else if(S.spin&&!S.drag&&S.mode==='globe'&&!modalOpen) S.rot[0]-=dt*.0042;
+  }else if(S.spin&&!S.drag&&S.mode==='globe'&&!modalOpen&&!dOpen) S.rot[0]-=dt*.0042;
   S.rot[0]=((S.rot[0]+180)%360+360)%360-180;
   S.rot[1]=Math.max(-82,Math.min(82,S.rot[1]));
   updateProj();
@@ -1212,15 +1245,55 @@ function importCSV(text){
   opReplace(replace?add:LOG.concat(add));
   toast((replace?'Imported ':'Merged ')+add.length+(skipped?' · '+skipped+' skipped':''));
 }
-$('#bClear').onclick=()=>{
+/* Clearing everything is gated on typing something real: the account password
+   when signed in, the word DELETE when the log only lives in this browser. */
+let dOpen=false;
+const dmsg=(t,k)=>{const m=$('#dMsg');m.textContent=t||'';m.className='gmsg'+(k?' '+k:'')};
+const dCloud=()=>MODE==='cloud'&&!!session;
+function openClear(){
   const n=LOG.length;
   if(!n) return toast('Nothing to clear');
-  const where = MODE==='cloud' && session ? 'from '+session.user.email : 'from this browser';
-  if(!confirm('Delete all '+n+' flight'+(n===1?'':'s')+' '+where+'?\n\n'+
-              'This cannot be undone. Export them first if you want a copy.')) return;
+  const cloud=dCloud(), inp=$('#dInput');
+  $('#dCount').textContent=n+' flight'+(n===1?'':'s');
+  $('#dWhere').textContent=cloud?'in '+session.user.email:'in this browser';
+  $('#dLabel').textContent=cloud?'Confirm with your account password':'Type DELETE to confirm';
+  inp.type=cloud?'password':'text';
+  inp.placeholder=cloud?'Your password':'DELETE';
+  inp.setAttribute('autocomplete',cloud?'current-password':'off');
+  inp.value=''; $('#dGo').disabled=true; dmsg('');
+  dOpen=true; $('#dscrim').classList.add('show');
+  setTimeout(()=>inp.focus(),60);
+}
+function closeClear(){dOpen=false;$('#dscrim').classList.remove('show');$('#dInput').value=''}
+function dValid(){
+  const v=$('#dInput').value;
+  return dCloud() ? v.length>0 : v.trim().toUpperCase()==='DELETE';
+}
+$('#dInput').addEventListener('input',()=>{$('#dGo').disabled=!dValid();dmsg('')});
+$('#dInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&dValid())doClear()});
+$('#dClose').onclick=closeClear;
+$('#dCancel').onclick=closeClear;
+$('#dExport').onclick=exportCSV;
+$('#dscrim').addEventListener('mousedown',e=>{if(e.target===$('#dscrim'))closeClear()});
+async function doClear(){
+  if(!dValid())return;
+  const v=$('#dInput').value;
+  $('#dGo').disabled=true;
+  if(dCloud()){
+    dmsg('Checking…');
+    try{
+      const {error}=await sb.auth.signInWithPassword({email:session.user.email,password:v});
+      if(error){ dmsg(error.message||'That password is not right','err');
+                 $('#dGo').disabled=false; return }
+    }catch(e){ dmsg('Could not verify that password','err'); $('#dGo').disabled=false; return }
+  }
+  const n=LOG.length;
+  closeClear();
   opReplace([]);
   toast('Cleared '+n+' flights');
-};
+}
+$('#dGo').onclick=doClear;
+$('#bClear').onclick=openClear;
 $('#bExport').onclick=exportCSV;
 $('#bImport').onclick=()=>$('#fileIn').click();
 $('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;
@@ -1378,6 +1451,7 @@ $('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   S.tab=t.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));render()});
 addEventListener('keydown',e=>{
+  if(dOpen){ if(e.key==='Escape')closeClear(); return }
   if(modalOpen){
     if(e.key==='Escape')closeModal();
     if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))commit(false);

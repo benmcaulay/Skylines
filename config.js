@@ -13,6 +13,6 @@
  * which keeps them in localStorage instead of here.
  */
 window.SKYLINES_CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: ''
+  SUPABASE_URL: 'https://ykvjuhmoaetrbalsyukd.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_pbxkJ_AoFWkXePjg_osZzw_G9NFx8fi'
 };

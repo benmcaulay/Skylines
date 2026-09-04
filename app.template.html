@@ -101,6 +101,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 .row .date b{display:block;color:var(--ink-dim);font-weight:600;font-size:10.5px}
 .pair{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
 .pair i{color:var(--accent);font-style:normal;font-size:11px;opacity:.85}
+.chip{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
 .row .al{font-size:10px;color:var(--ink-faint);margin-top:2px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;max-width:180px}
 .row .num{text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink-dim);line-height:1.4}
@@ -218,6 +219,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 .opt.new .code{color:var(--cool)}
 .mnote{font-size:9.5px;color:var(--ink-faint);padding:6px 10px 4px;letter-spacing:.06em;text-transform:uppercase}
 
+.swatches{display:flex;gap:7px;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  transition:.15s;position:relative}
+.sw:hover{transform:scale(1.12)}
+.sw.on{border-color:var(--ink);box-shadow:0 0 0 2px rgba(0,0,0,.45) inset}
 .preview{font-family:var(--mono);font-size:11px;color:var(--ink-dim);background:rgba(247,191,98,.06);
   border:1px solid rgba(247,191,98,.16);border-radius:9px;padding:11px 13px;line-height:1.65}
 .preview b{color:var(--accent);font-weight:600}
@@ -274,6 +280,66 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
   color:var(--ink-faint);cursor:pointer;transition:.15s}
 .gfoot span:hover{color:var(--accent)}
 
+#pscrim{position:fixed;inset:0;z-index:24;background:rgba(4,9,14,.62);backdrop-filter:blur(5px);
+  display:none;align-items:center;justify-content:center;padding:24px}
+#pscrim.show{display:flex}
+#pmodal{width:min(420px,100%);display:flex;flex-direction:column;animation:pop .2s cubic-bezier(.2,.9,.3,1.1)}
+#pmodal input{width:100%;font-size:12px;padding:9px 10px;font-family:var(--sans);letter-spacing:0}
+
+/* ---------- scrapbook ---------- */
+.detail{padding:14px 18px 4px}
+.back{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;margin-bottom:12px}
+.back:hover{color:var(--accent)}
+.dtitle{font-family:var(--mono);font-size:17px;font-weight:600;letter-spacing:.05em;
+  display:flex;align-items:center;gap:8px}
+.dtitle i{color:var(--accent);font-style:normal;font-size:14px}
+.dsub{font-size:10.5px;color:var(--ink-faint);margin-top:5px;line-height:1.6}
+.dact{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);cursor:pointer}
+.dact:hover{color:var(--bad)}
+
+.composer{display:flex;gap:5px;padding:10px 18px 12px;border-bottom:1px solid var(--panel-line)}
+.ctab{flex:1;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;padding:7px 0;border-radius:7px;cursor:pointer;
+  background:rgba(255,255,255,.04);color:var(--ink-faint);border:1px solid transparent;transition:.15s}
+.ctab:hover{color:var(--ink);background:rgba(255,255,255,.09)}
+.ctab.on{color:#0d1620;background:linear-gradient(180deg,#ffd489,var(--accent));font-weight:700}
+.cbody{padding:0 18px 14px;border-bottom:1px solid var(--panel-line)}
+.cbody textarea{width:100%;min-height:62px;resize:vertical;background:rgba(255,255,255,.045);
+  color:var(--ink);border:1px solid var(--panel-line);border-radius:8px;padding:9px 10px;
+  font-family:var(--sans);font-size:12px;outline:none}
+.cbody textarea:focus{border-color:rgba(247,191,98,.45)}
+.drop{border:1px dashed rgba(140,180,215,.3);border-radius:9px;padding:18px 12px;text-align:center;
+  cursor:pointer;transition:.15s;font-size:11px;color:var(--ink-faint)}
+.drop:hover,.drop.over{border-color:var(--accent);background:rgba(247,191,98,.07);color:var(--ink-dim)}
+.crow{display:flex;justify-content:flex-end;gap:8px;margin-top:9px;align-items:center}
+
+.entries{padding:12px 18px 24px;display:flex;flex-direction:column;gap:10px}
+.ent{border:1px solid var(--panel-line);border-radius:10px;overflow:hidden;
+  background:rgba(255,255,255,.022);position:relative}
+.ent .etop{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+  font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.ent .ex{cursor:pointer;opacity:0;transition:.15s}
+.ent:hover .ex{opacity:1}
+.ent .ex:hover{color:var(--bad)}
+.ent p{padding:0 11px 11px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.ent img{width:100%;display:block;cursor:zoom-in;background:#0a141d}
+.ent iframe,.ent video{width:100%;aspect-ratio:16/9;display:block;border:0;background:#000}
+.ent a.vlink{display:block;padding:0 11px 11px;font-size:11px;color:var(--cool);
+  word-break:break-all;text-decoration:none}
+.ent a.vlink:hover{text-decoration:underline}
+#lightbox{position:fixed;inset:0;z-index:40;background:rgba(3,7,11,.93);display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:32px;cursor:zoom-out}
+#lightbox.show{display:flex}
+#lightbox img{max-width:100%;max-height:82vh;border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+#lbCap{font-size:12px;color:var(--ink-dim);max-width:640px;text-align:center}
+.needacct{padding:30px 18px;text-align:center;color:var(--ink-faint);font-size:11.5px;line-height:1.7}
+.needacct b{color:var(--ink-dim);display:block;margin-bottom:6px;font-family:var(--mono);
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.needacct code{font-family:var(--mono);font-size:10.5px;color:var(--accent)}
+body.no-scrapbook #bPin{display:none}
+
 #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);z-index:40;padding:11px 18px;
   font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;opacity:0;
   transition:.24s;pointer-events:none}
@@ -302,6 +368,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
     <span class="sep"></span>
     <button class="btn on" id="spin">Spin</button>
     <button class="btn" id="reset">Reset view</button>
+    <span class="sep"></span>
+    <button class="btn" id="bPin" title="Drop a pin on a place">＋ Pin</button>
   </div>
 
   <div id="side" class="glass">
@@ -397,6 +465,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
         </div>
       </div>
 
+      <div class="f">
+        <div class="lbl">Colour on the map</div>
+        <div class="swatches" id="iColor"></div>
+      </div>
+
       <div class="frow">
         <div class="f"><div class="lbl">Distance (mi)</div><input type="text" id="iMi" placeholder="auto"></div>
         <div class="f"><div class="lbl">Duration (h:mm)</div><input type="text" id="iDur" placeholder="auto"></div>
@@ -468,6 +541,26 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
   </div>
 </div>
 
+<div id="pscrim">
+  <div id="pmodal" class="glass">
+    <div class="mhead"><h2>Pin a place</h2><div class="icb" id="pClose">✕</div></div>
+    <div class="mbody">
+      <div class="f"><div class="lbl">Name</div>
+        <input type="text" id="pName" placeholder="Kyoto, the trailhead, that ramen shop" spellcheck="false"></div>
+      <div class="f"><div class="lbl">Note <span style="text-transform:none;letter-spacing:0">(optional)</span></div>
+        <input type="text" id="pNote" placeholder="what happened here"></div>
+      <div class="preview" id="pCoord">—</div>
+      <div class="gmsg" id="pMsg"></div>
+    </div>
+    <div class="mfoot">
+      <button class="ghost" id="pCancel">Cancel</button>
+      <button class="prim" id="pSave" disabled>Drop pin</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox"><img id="lbImg" alt=""><div id="lbCap"></div></div>
+
 <div id="toast" class="glass"></div>
 <input type="file" id="fileIn" accept=".csv,text/csv" style="display:none">
 
@@ -525,10 +618,43 @@ function makeClient(){
 /* A record is {id?,date,from,to,airline,num,miles,dur,cls,note}. `id` exists
    only for rows that live in Postgres; guest rows are id-less. */
 const fromRow=r=>({id:r.id,date:r.flown_on,from:r.from_code,to:r.to_code,airline:r.airline||'',
-  num:r.flight_no||'',miles:r.miles||0,dur:r.duration||'',cls:r.cabin||'',note:r.note||''});
-const toRow=(r,uid)=>({user_id:uid,flown_on:r.date,from_code:r.from,to_code:r.to,
-  airline:r.airline||'',flight_no:r.num||'',miles:r.miles||null,duration:r.dur||'',
-  cabin:r.cls||'',note:r.note||''});
+  num:r.flight_no||'',miles:r.miles||0,dur:r.duration||'',cls:r.cabin||'',note:r.note||'',
+  color:r.color||''});
+/* The scrapbook migration may not have been run yet against a given project.
+   Detect what is actually there rather than writing columns that do not exist,
+   which would otherwise break adding a flight the moment this ships. */
+const CAP={color:true,scrapbook:true};
+async function detectCaps(){
+  try{ const {error}=await sb.from('flights').select('color').limit(1); CAP.color=!error }
+  catch(e){ CAP.color=false }
+  try{ const {error}=await sb.from('places').select('id').limit(1); CAP.scrapbook=!error }
+  catch(e){ CAP.scrapbook=false }
+  document.body.classList.toggle('no-scrapbook',!CAP.scrapbook);
+}
+const toRow=(r,uid)=>{
+  const row={user_id:uid,flown_on:r.date,from_code:r.from,to_code:r.to,
+    airline:r.airline||'',flight_no:r.num||'',miles:r.miles||null,duration:r.dur||'',
+    cabin:r.cls||'',note:r.note||''};
+  if(CAP.color) row.color=r.color||'';
+  return row;
+};
+
+/* Flight colours. '' means the default amber, so old records need no migration. */
+const SWATCHES=[
+  {v:'',        n:'Amber'},   {v:'#6fd4ff', n:'Ice'},     {v:'#7ee6a8', n:'Mint'},
+  {v:'#c79bff', n:'Violet'},  {v:'#ff8fb1', n:'Rose'},    {v:'#ff7a5c', n:'Ember'},
+  {v:'#9fb2c4', n:'Steel'},   {v:'#ffe680', n:'Sun'}
+];
+const arcColor=f=>f.color||C.arcA;
+/* lighten for the far end of the arc gradient */
+function lighten(hex,amt){
+  const m=/^#([0-9a-f]{6})$/i.exec(hex); if(!m)return hex;
+  const n=parseInt(m[1],16);
+  const r=Math.min(255,Math.round((n>>16&255)+(255-(n>>16&255))*amt));
+  const g=Math.min(255,Math.round((n>>8&255)+(255-(n>>8&255))*amt));
+  const b=Math.min(255,Math.round((n&255)+(255-(n&255))*amt));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 
 let LOG=[];
 function storedLocal(){
@@ -560,6 +686,95 @@ async function cloudDelete(id){
 async function cloudClear(){
   const {error}=await sb.from('flights').delete().eq('user_id',uid());
   if(error)throw error;
+}
+
+let PLACES=[];
+async function placesList(){
+  const {data,error}=await sb.from('places').select('*').order('created_at',{ascending:true});
+  if(error)throw error;
+  return data.map(p=>({id:p.id,name:p.name,lat:p.lat,lon:p.lon,note:p.note||''}));
+}
+async function placeAdd(p){
+  const {error}=await sb.from('places')
+    .insert({user_id:uid(),name:p.name,lat:p.lat,lon:p.lon,note:p.note||''});
+  if(error)throw error;
+  PLACES=await placesList();
+}
+async function placeDel(id){
+  const {error}=await sb.from('places').delete().eq('id',id);
+  if(error)throw error;
+  PLACES=PLACES.filter(p=>p.id!==id);
+}
+
+/* ---------- scrapbook entries ---------- */
+const TKEY=t=>t.flight_id?['flight_id',t.flight_id]:t.airport_code?['airport_code',t.airport_code]:['place_id',t.place_id];
+async function entriesFor(t){
+  const [col,val]=TKEY(t);
+  const {data,error}=await sb.from('entries').select('*').eq(col,val)
+    .order('created_at',{ascending:false});
+  if(error)throw error;
+  return data;
+}
+async function entryAdd(t,e){
+  const [col,val]=TKEY(t);
+  const row={user_id:uid(),kind:e.kind,body:e.body||'',
+             storage_path:e.storage_path||'',video_url:e.video_url||''};
+  row[col]=val;
+  const {error}=await sb.from('entries').insert(row);
+  if(error)throw error;
+}
+async function entryDel(e){
+  if(e.kind==='photo'&&e.storage_path){
+    try{ await sb.storage.from('scrapbook').remove([e.storage_path]) }catch(err){ console.warn(err) }
+  }
+  const {error}=await sb.from('entries').delete().eq('id',e.id);
+  if(error)throw error;
+}
+
+/* Photos are downscaled in the browser before upload; a 4MB phone shot lands
+   around 250KB, which matters on a 1GB bucket. */
+function shrink(file,max,quality){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const scale=Math.min(1,max/Math.max(img.width,img.height));
+      const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+      const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
+      cvs.getContext('2d').drawImage(img,0,0,w,h);
+      cvs.toBlob(b=>b?res(b):rej(new Error('could not encode')),'image/jpeg',quality);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('not an image'))};
+    img.src=url;
+  });
+}
+async function uploadPhoto(file){
+  const blob=await shrink(file,1600,0.82);
+  const path=uid()+'/'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2))+'.jpg';
+  const {error}=await sb.storage.from('scrapbook').upload(path,blob,{contentType:'image/jpeg'});
+  if(error)throw error;
+  return {path,bytes:blob.size};
+}
+const signed=new Map();
+async function signedUrl(path){
+  const hit=signed.get(path);
+  if(hit&&hit.exp>Date.now()) return hit.url;
+  const {data,error}=await sb.storage.from('scrapbook').createSignedUrl(path,3600);
+  if(error) throw error;
+  signed.set(path,{url:data.signedUrl,exp:Date.now()+55*60*1000});
+  return data.signedUrl;
+}
+
+/* youtube / vimeo / direct file -> something embeddable */
+function embedFor(url){
+  const u=(url||'').trim();
+  let m=/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/.exec(u);
+  if(m) return {type:'iframe',src:'https://www.youtube-nocookie.com/embed/'+m[1]};
+  m=/vimeo\.com\/(?:video\/)?(\d+)/.exec(u);
+  if(m) return {type:'iframe',src:'https://player.vimeo.com/video/'+m[1]};
+  if(/^https?:\/\/\S+\.(mp4|webm|ogg|mov)(\?\S*)?$/i.test(u)) return {type:'video',src:u};
+  if(/^https?:\/\/\S+$/i.test(u)) return {type:'link',src:u};
+  return null;
 }
 
 const refreshAll=()=>{rebuild();buildYears();render()};
@@ -621,7 +836,7 @@ function rebuild(){
     const mins=parseDur(r.dur)??estMins(mi);
     return {id:i,rec:r,from:r.from,to:r.to,a,b,airline:r.airline||'—',miles:mi,mins,
       dur:hhmm(mins),date:r.date,year:+r.date.slice(0,4),num:r.num||'',cls:r.cls||'',note:r.note||'',
-      path:gcPath(a.lon,a.lat,b.lon,b.lat,140),phase:(i*0.137)%1};
+      color:r.color||'',path:gcPath(a.lon,a.lat,b.lon,b.lat,140),phase:(i*0.137)%1};
   });
   CACHE.key='';
 }
@@ -646,7 +861,8 @@ function toVec(lon,lat){const p=lat*RAD,l=lon*RAD;
 const cv=$('#cv'), ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
 const S={mode:'globe',spin:true,drag:false,rot:[30,22],zoom:1,mzoom:1,mpan:[0,0],tween:null,
-  year:'all',airline:'all',q:'',tab:'flights',hoverF:null,selF:null,hoverA:null,selA:null,mouse:null};
+  year:'all',airline:'all',q:'',tab:'flights',hoverF:null,selF:null,hoverA:null,selA:null,
+  hoverP:null,selP:null,pin:false,mouse:null};
 let SCREEN={};
 function resize(){DPR=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;
   cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
@@ -672,6 +888,22 @@ function proj(lon,lat,lift){
     return [P.cx+P.R*r*x, P.cy-P.R*r*y, z>=0||r*Math.hypot(x,y)>1, z];
   }
   return [P.cx+lon*P.k, P.cy-lat*P.k, true, 1];
+}
+/* screen -> [lon,lat]; null when the point misses the globe or falls off the map */
+function unproject(sx,sy){
+  if(P.type==='globe'){
+    const nx=(sx-P.cx)/P.R, ny=(P.cy-sy)/P.R;
+    const r2=nx*nx+ny*ny; if(r2>1) return null;
+    const nz=Math.sqrt(1-r2);
+    const vz = P.cp*ny + P.sp*nz;          // sin(lat)
+    const u  = -P.sp*ny + P.cp*nz;         // cos(lat)*cos(lon-rot)
+    let lon = S.rot[0] + Math.atan2(nx,u)/RAD;
+    lon = ((lon+180)%360+360)%360-180;
+    return [lon, Math.asin(Math.max(-1,Math.min(1,vz)))/RAD];
+  }
+  const lon=(sx-P.cx)/P.k, lat=(P.cy-sy)/P.k;
+  if(lon<-180||lon>180||lat<-90||lat>90) return null;
+  return [lon,lat];
 }
 const C={oceanHi:'#35597a',oceanMid:'#22415a',oceanLo:'#0e1e2b',land:'#14222e',
   landLine:'rgba(150,192,226,.20)',grat:'rgba(150,192,226,.055)',dim:'rgba(126,166,201,.20)',
@@ -830,9 +1062,10 @@ function drawArcs(active,now){
     if(!active.has(f.id))continue;
     const hot=(S.selF===f.id)||(S.hoverF===f.id)||(S.selA&&(f.from===S.selA||f.to===S.selA));
     const a=proj(f.a.lon,f.a.lat,0), b=proj(f.b.lon,f.b.lat,0);
+    const c0=arcColor(f), c1=f.color?lighten(f.color,.32):C.arcB;
     let grad;
     try{grad=ctx.createLinearGradient(a[0],a[1],b[0],b[1]);
-      grad.addColorStop(0,C.arcA);grad.addColorStop(1,C.arcB)}catch(e){grad=C.arcA}
+      grad.addColorStop(0,c0);grad.addColorStop(1,c1)}catch(e){grad=c0}
     ctx.globalAlpha=(S.selF!==null&&S.selF!==f.id&&!hot)?.30:1;
     ctx.shadowColor='rgba(247,160,80,.55)';ctx.shadowBlur=hot?16:8;
     ctx.strokeStyle=hot?'#fff3dc':grad;ctx.lineWidth=hot?2.1:1.25;
@@ -883,6 +1116,36 @@ function drawAirports(traffic){
     ctx.fillStyle=S.selA===code?'#ffd489':'rgba(226,240,250,.92)';ctx.fillText(code,x,y+.5);
   }
 }
+let PSCREEN={};
+function drawPlaces(){
+  PSCREEN={};
+  for(const pl of PLACES){
+    const p=proj(pl.lon,pl.lat,0);
+    PSCREEN[pl.id]={x:p[0],y:p[1],vis:p[2]};
+    if(!p[2])continue;
+    const hot=S.selP===pl.id||S.hoverP===pl.id;
+    const r=hot?6:4.6;
+    const g=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],r*3.4);
+    g.addColorStop(0,'rgba(124,214,255,.45)');g.addColorStop(1,'rgba(124,214,255,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(p[0],p[1],r*3.4,0,TAU);ctx.fill();
+    // a diamond, so pins never read as airports
+    ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(Math.PI/4);
+    ctx.fillStyle=hot?'#ffffff':'#7cd6ff';
+    ctx.shadowColor='rgba(124,214,255,.9)';ctx.shadowBlur=10;
+    ctx.fillRect(-r/1.7,-r/1.7,r*1.18,r*1.18);
+    ctx.shadowBlur=0;ctx.restore();
+    if(hot){
+      ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(p[0],p[1],r+5,0,TAU);ctx.stroke();
+    }
+    ctx.font='600 9.5px ui-monospace,Menlo,monospace';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    const w=ctx.measureText(pl.name).width;
+    ctx.fillStyle='rgba(6,12,18,.72)';roundRect(p[0]+8,p[1]-6.5,w+7,13,3);ctx.fill();
+    ctx.fillStyle=hot?'#ffffff':'rgba(190,228,250,.95)';
+    ctx.fillText(pl.name,p[0]+11.5,p[1]+.5);
+  }
+}
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
   ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 
@@ -895,12 +1158,12 @@ function frame(now){
     S.rot[0]=S.tween.a0+shortest(S.tween.a0,S.tween.a1)*e;
     S.rot[1]=S.tween.b0+(S.tween.b1-S.tween.b0)*e;
     if(t>=1)S.tween=null;
-  }else if(S.spin&&!S.drag&&S.mode==='globe'&&!modalOpen&&!dOpen) S.rot[0]-=dt*.0042;
+  }else if(S.spin&&!S.drag&&S.mode==='globe'&&!modalOpen&&!dOpen&&!pOpen) S.rot[0]-=dt*.0042;
   S.rot[0]=((S.rot[0]+180)%360+360)%360-180;
   S.rot[1]=Math.max(-82,Math.min(82,S.rot[1]));
   updateProj();
   const {active,traffic}=filterSet();
-  drawOcean();drawGraticule();drawLand();drawArcs(active,now);drawAirports(traffic);
+  drawOcean();drawGraticule();drawLand();drawArcs(active,now);drawAirports(traffic);drawPlaces();
   hitTest();
   requestAnimationFrame(frame);
 }
@@ -951,7 +1214,22 @@ cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(-e.deltaY*.0
 const tip=$('#tip');
 function hitTest(){
   if(!S.mouse||S.drag){if(S.drag)tip.classList.remove('show');return}
-  const [mx,my]=S.mouse;let best=null,bd=15;
+  const [mx,my]=S.mouse;
+  let bestP=null,bpd=14;
+  for(const id in PSCREEN){const s=PSCREEN[id];if(!s.vis)continue;
+    const d=Math.hypot(s.x-mx,s.y-my);if(d<bpd){bpd=d;bestP=id}}
+  S.hoverP=bestP;
+  if(bestP){
+    S.hoverA=null;
+    const pl=PLACES.find(p=>p.id===bestP), sc=PSCREEN[bestP];
+    tip.innerHTML='<div class="t1">'+esc(pl.name)+'</div>'+
+      '<div class="t2">'+pl.lat.toFixed(2)+', '+pl.lon.toFixed(2)+'</div>'+
+      '<div class="t3">pinned place</div>';
+    tip.style.left=sc.x+'px';tip.style.top=(sc.y-6)+'px';
+    tip.classList.add('show');cv.style.cursor='pointer';
+    return;
+  }
+  let best=null,bd=15;
   for(const code in SCREEN){const s=SCREEN[code];if(!s.vis)continue;
     const d=Math.hypot(s.x-mx,s.y-my);if(d<bd){bd=d;best=code}}
   S.hoverA=best;
@@ -965,8 +1243,24 @@ function hitTest(){
   }else{tip.classList.remove('show');cv.style.cursor=S.drag?'grabbing':'grab'}
 }
 function clickAt(){
-  if(S.hoverA){S.selA=(S.selA===S.hoverA)?null:S.hoverA;S.selF=null;render()}
-  else if(S.selA||S.selF!==null){S.selA=null;S.selF=null;render()}
+  if(S.pin){
+    const ll=unproject(S.mouse[0],S.mouse[1]);
+    if(!ll) return toast('Click somewhere on the globe');
+    openPlace(ll[0],ll[1]);
+    return;
+  }
+  if(S.hoverP){S.selP=(S.selP===S.hoverP)?null:S.hoverP;S.selA=null;S.selF=null;render();return}
+  if(S.hoverA){S.selA=(S.selA===S.hoverA)?null:S.hoverA;S.selF=null;S.selP=null;render();return}
+  if(S.selA||S.selF!==null||S.selP){S.selA=null;S.selF=null;S.selP=null;render()}
+}
+function setPin(on){
+  S.pin=on;
+  $('#bPin').classList.toggle('on',on);
+  cv.style.cursor=on?'crosshair':'grab';
+  $('#hint').textContent=on
+    ? 'CLICK ANYWHERE TO DROP A PIN · ESC TO STOP'
+    : (S.mode==='globe'?'DRAG TO ROTATE':'DRAG TO PAN')+
+      ' · SCROLL TO ZOOM · CLICK AN AIRPORT · N FOR NEW FLIGHT';
 }
 function focusOn(f){const n=f.path.length/2,i=Math.floor(n/2);spinTo(f.path[i*2],f.path[i*2+1])}
 function spinTo(lon,lat){if(S.mode!=='globe')return;
@@ -1087,6 +1381,17 @@ let modalOpen=false, editing=null;
 const cFrom=Combo('#cFrom',{placeholder:'SFO or San Francisco',search:searchAirport,onchange:previewLegs});
 const cTo  =Combo('#cTo',  {placeholder:'DUB or Dublin',      search:searchAirport,onchange:previewLegs});
 const cAir =Combo('#cAir', {placeholder:'Type any airline',   search:searchAirline, onchange:previewLegs});
+let pickedColor='';
+function buildSwatches(){
+  $('#iColor').innerHTML=SWATCHES.map(sw=>
+    '<div class="sw" data-v="'+sw.v+'" title="'+sw.n+'" style="background:'+(sw.v||C.arcA)+'"></div>').join('');
+  $('#iColor').querySelectorAll('.sw').forEach(el=>el.onclick=()=>setColor(el.dataset.v));
+}
+function setColor(v){
+  pickedColor=v||'';
+  $('#iColor').querySelectorAll('.sw').forEach(el=>el.classList.toggle('on',el.dataset.v===pickedColor));
+}
+buildSwatches();
 let rt=true;
 function setRT(v){rt=v;$('#tRT').classList.toggle('on',rt);$('#rtFields').style.display=rt?'flex':'none';previewLegs()}
 $('#tRT').onclick=()=>setRT(!rt);
@@ -1146,6 +1451,7 @@ function openModal(pre){
   $('#iNum').value=(pre&&pre.num)||''; $('#iNum2').value='';
   $('#iCls').value=(pre&&pre.cls)||''; $('#iNote').value=(pre&&pre.note)||'';
   $('#iMi').value=(pre&&pre.miles)||''; $('#iDur').value=(pre&&pre.dur)||'';
+  setColor((pre&&pre.color)||'');
   setRT(editing!=null?false:(pre?pre.rt!==false:true));
   $('#scrim').classList.add('show');
   previewLegs();
@@ -1160,7 +1466,8 @@ function commit(keepOpen){
   const L=legInfo();
   const airline=cAir.value||cAir.input.value.trim()||'';
   const d1=$('#iDate').value, d2=$('#iDate2').value||d1;
-  const base={airline,miles:L.mi,dur:hhmm(L.mins),cls:$('#iCls').value,note:$('#iNote').value.trim()};
+  const base={airline,miles:L.mi,dur:hhmm(L.mins),cls:$('#iCls').value,
+              note:$('#iNote').value.trim(),color:pickedColor};
   let anchor;
   if(editing!=null){
     Object.assign(editing,base,{from:L.A.code,to:L.B.code,date:d1,num:$('#iNum').value.trim()});
@@ -1185,7 +1492,7 @@ $('#bAdd').onclick=()=>openModal(null);
 
 function addReturn(f){
   openModal({from:f.to,to:f.from,airline:f.airline,date:f.date,rt:false,
-    miles:f.miles,dur:f.dur,cls:f.cls});
+    miles:f.miles,dur:f.dur,cls:f.cls,color:f.color});
   toast('Return leg pre-filled');
 }
 function delFlight(f){
@@ -1196,12 +1503,12 @@ function delFlight(f){
 
 /* ===================== CSV ===================== */
 const CSV_COLS=['Date','From','To','Flight_Number','Airline','Distance','Duration','Seat','Seat_Type',
-  'Class','Reason','Plane','Registration','Trip','Note'];
+  'Class','Reason','Plane','Registration','Trip','Note','Color'];
 function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCSV(){
   const rows=[CSV_COLS.join(',')];
   for(const f of FLIGHTS) rows.push([f.date,f.from,f.to,f.num,f.airline,f.miles,f.dur,'','',
-    f.cls,'','','','',f.note].map(csvCell).join(','));
+    f.cls,'','','','',f.note,f.color].map(csvCell).join(','));
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1228,7 +1535,7 @@ function importCSV(text){
   const head=rows[0].map(h=>h.trim().toLowerCase());
   const ix=n=>head.indexOf(n);
   const iD=ix('date'),iF=ix('from'),iT=ix('to'),iA=ix('airline'),iN=ix('flight_number'),
-        iM=ix('distance'),iU=ix('duration'),iC=ix('class'),iNo=ix('note');
+        iM=ix('distance'),iU=ix('duration'),iC=ix('class'),iNo=ix('note'),iCol=ix('color');
   if(iD<0||iF<0||iT<0)return toast('Not an OpenFlights CSV');
   const add=[];let skipped=0;
   for(const r of rows.slice(1)){
@@ -1238,7 +1545,8 @@ function importCSV(text){
     const mi=parseInt((r[iM]||'').replace(/[^\d]/g,''),10);
     add.push({date,from,to,airline:(r[iA]||'').trim(),num:iN>=0?(r[iN]||'').trim():'',
       miles:Number.isFinite(mi)&&mi>0?mi:Math.round(haversine(apOf(from),apOf(to))),
-      dur:iU>=0?(r[iU]||'').trim():'',cls:iC>=0?(r[iC]||'').trim():'',note:iNo>=0?(r[iNo]||'').trim():''});
+      dur:iU>=0?(r[iU]||'').trim():'',cls:iC>=0?(r[iC]||'').trim():'',
+      note:iNo>=0?(r[iNo]||'').trim():'',color:iCol>=0?(r[iCol]||'').trim():''});
   }
   if(!add.length)return toast('No usable rows'+(skipped?' ('+skipped+' skipped)':''));
   const replace=confirm(add.length+' flights found.\n\nOK = replace the current log\nCancel = merge into it');
@@ -1305,6 +1613,216 @@ $('#bRevert').onclick=()=>{
   opReplace(SEED.map(r=>({...r}))); toast('Reverted to the bundled log');
 };
 
+/* ===================== place modal ===================== */
+let pOpen=false, pLL=null;
+function openPlace(lon,lat){
+  if(MODE!=='cloud'){ toast('Sign in to pin places'); return }
+  pLL=[lon,lat]; pOpen=true;
+  $('#pName').value=''; $('#pNote').value=''; $('#pMsg').textContent='';
+  $('#pSave').disabled=true;
+  $('#pCoord').innerHTML='<b>'+lat.toFixed(3)+', '+lon.toFixed(3)+'</b>';
+  $('#pscrim').classList.add('show');
+  setTimeout(()=>$('#pName').focus(),60);
+}
+function closePlace(){pOpen=false;$('#pscrim').classList.remove('show')}
+$('#pName').addEventListener('input',()=>{$('#pSave').disabled=!$('#pName').value.trim()});
+$('#pName').addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#pName').value.trim())savePlace()});
+$('#pClose').onclick=closePlace; $('#pCancel').onclick=closePlace;
+$('#pscrim').addEventListener('mousedown',e=>{if(e.target===$('#pscrim'))closePlace()});
+async function savePlace(){
+  const name=$('#pName').value.trim(); if(!name||!pLL)return;
+  $('#pSave').disabled=true;
+  try{
+    await placeAdd({name,lat:pLL[1],lon:pLL[0],note:$('#pNote').value.trim()});
+    closePlace(); setPin(false); toast('Pinned '+name);
+    const made=PLACES[PLACES.length-1];
+    if(made){S.selP=made.id;S.selA=null;S.selF=null}
+    render();
+  }catch(e){
+    $('#pMsg').textContent=e.message||'Could not save that pin';
+    $('#pMsg').className='gmsg err'; $('#pSave').disabled=false;
+  }
+}
+$('#pSave').onclick=savePlace;
+
+/* ===================== scrapbook ===================== */
+let composerKind='note', entryCache={key:null,rows:[]}, busy=false;
+function currentTarget(){
+  if(S.selF!==null){const f=FLIGHTS.find(x=>x.id===S.selF); return f&&f.rec.id?{flight_id:f.rec.id,f}:null}
+  if(S.selA) return {airport_code:S.selA};
+  if(S.selP) return {place_id:S.selP};
+  return null;
+}
+const targetKey=t=>t?TKEY(t).join(':'):'';
+
+async function loadEntries(t){
+  const k=targetKey(t);
+  if(entryCache.key===k) return entryCache.rows;
+  entryCache={key:k,rows:[]};
+  const rows=await entriesFor(t);
+  entryCache={key:k,rows};
+  return rows;
+}
+function lightbox(src,cap){
+  $('#lbImg').src=src; $('#lbCap').textContent=cap||'';
+  $('#lightbox').classList.add('show');
+}
+$('#lightbox').onclick=()=>{$('#lightbox').classList.remove('show');$('#lbImg').src=''};
+
+function entryHtml(e){
+  const when=e.created_at?e.created_at.slice(0,10):'';
+  const top='<div class="etop"><span>'+e.kind+' · '+when+'</span>'+
+            '<span class="ex" data-del="'+e.id+'">✕</span></div>';
+  if(e.kind==='note') return '<div class="ent">'+top+'<p>'+esc(e.body)+'</p></div>';
+  if(e.kind==='photo') return '<div class="ent">'+top+
+    '<img data-path="'+esc(e.storage_path)+'" alt="'+esc(e.body)+'">'+
+    (e.body?'<p>'+esc(e.body)+'</p>':'')+'</div>';
+  const em=embedFor(e.video_url);
+  let media='';
+  if(em&&em.type==='iframe') media='<iframe src="'+esc(em.src)+'" allowfullscreen loading="lazy"></iframe>';
+  else if(em&&em.type==='video') media='<video src="'+esc(em.src)+'" controls preload="metadata"></video>';
+  else media='<a class="vlink" href="'+esc(e.video_url)+'" target="_blank" rel="noopener">'+esc(e.video_url)+'</a>';
+  return '<div class="ent">'+top+media+(e.body?'<p>'+esc(e.body)+'</p>':'')+'</div>';
+}
+
+function composerHtml(){
+  const tab=(k,l)=>'<div class="ctab'+(composerKind===k?' on':'')+'" data-k="'+k+'">'+l+'</div>';
+  let body='';
+  if(composerKind==='note')
+    body='<textarea id="cNote" placeholder="What happened here?"></textarea>'+
+         '<div class="crow"><button class="prim" id="cSave">Add note</button></div>';
+  else if(composerKind==='photo')
+    body='<div class="drop" id="cDrop">Drop photos here, or click to choose<br>'+
+         '<span style="font-size:10px;opacity:.7">resized to 1600px before upload</span></div>'+
+         '<input type="file" id="cFile" accept="image/*" multiple style="display:none">';
+  else
+    body='<textarea id="cVid" placeholder="Paste a YouTube, Vimeo or .mp4 link" style="min-height:42px"></textarea>'+
+         '<div class="crow"><button class="prim" id="cSave">Add video</button></div>';
+  return '<div class="composer">'+tab('note','Note')+tab('photo','Photo')+tab('video','Video')+'</div>'+
+         '<div class="cbody">'+body+'</div>';
+}
+
+async function renderDetail(){
+  const t=currentTarget();
+  if(!t) return false;
+  let head;
+  if(t.flight_id!==undefined&&t.f){
+    const f=t.f;
+    head='<div class="dtitle"><span class="chip" style="background:'+arcColor(f)+'"></span>'+
+      f.from+' <i>→</i> '+f.to+'</div>'+
+      '<div class="dsub">'+esc(f.airline)+(f.num?' · '+esc(f.num):'')+'<br>'+
+      f.date+' · '+fmt(f.miles)+' mi · '+f.dur+'</div>';
+  }else if(t.airport_code){
+    const a=AIR[t.airport_code]||apOf(t.airport_code);
+    const n=FLIGHTS.filter(f=>f.from===t.airport_code||f.to===t.airport_code).length;
+    head='<div class="dtitle">'+t.airport_code+'</div>'+
+      '<div class="dsub">'+esc(a?a.n:'')+(a&&a.c?' · '+esc(a.c):'')+(a?', '+esc(a.co):'')+'<br>'+
+      n+' flight'+(n===1?'':'s')+' through here</div>';
+  }else{
+    const pl=PLACES.find(x=>x.id===t.place_id);
+    if(!pl) return false;
+    head='<div class="dtitle">'+esc(pl.name)+'</div>'+
+      '<div class="dsub">'+pl.lat.toFixed(3)+', '+pl.lon.toFixed(3)+
+      (pl.note?'<br>'+esc(pl.note):'')+
+      '<br><span class="dact" id="dDelPlace">Remove this pin</span></div>';
+  }
+  const shell=(inner)=>'<div class="detail"><div class="back" id="dBack">← Back</div>'+head+'</div>'+inner;
+
+  if(MODE!=='cloud'){
+    bodyEl.innerHTML=shell('<div class="needacct"><b>Scrapbook</b>'+
+      'Notes, photos and video live in your account.<br>Sign in to start one.</div>');
+    wireDetailBasics(); return true;
+  }
+  if(!CAP.scrapbook){
+    bodyEl.innerHTML=shell('<div class="needacct"><b>Scrapbook not set up</b>'+
+      'Run <code>supabase/schema.sql</code> against this project to create the'+
+      ' places, entries and storage bucket.</div>');
+    wireDetailBasics(); return true;
+  }
+  bodyEl.innerHTML=shell(composerHtml()+'<div class="entries" id="entryList">'+
+    '<div class="empty" style="padding:22px 0">LOADING…</div></div>');
+  wireDetailBasics(); wireComposer(t);
+  try{
+    const rows=await loadEntries(t);
+    const list=$('#entryList');
+    if(!list) return true;
+    list.innerHTML=rows.length? rows.map(entryHtml).join('')
+      : '<div class="empty" style="padding:22px 0">NOTHING HERE YET</div>';
+    list.querySelectorAll('[data-del]').forEach(x=>x.onclick=async()=>{
+      const e=rows.find(r=>r.id===x.dataset.del);
+      if(!e||!confirm('Delete this '+e.kind+'?'))return;
+      try{ await entryDel(e); entryCache.key=null; toast(e.kind+' deleted'); render() }
+      catch(err){ toast('Could not delete — '+(err.message||'')) }
+    });
+    list.querySelectorAll('img[data-path]').forEach(async img=>{
+      try{ const u=await signedUrl(img.dataset.path); img.src=u;
+           img.onclick=()=>lightbox(u,img.alt) }
+      catch(e){ img.replaceWith(Object.assign(document.createElement('p'),
+                {textContent:'Photo unavailable'})) }
+    });
+  }catch(e){
+    const list=$('#entryList');
+    if(list) list.innerHTML='<div class="empty" style="padding:22px 0">COULD NOT LOAD — '+esc(e.message||'')+'</div>';
+  }
+  return true;
+}
+function wireDetailBasics(){
+  const b=$('#dBack');
+  if(b) b.onclick=()=>{S.selF=null;S.selA=null;S.selP=null;render()};
+  const dp=$('#dDelPlace');
+  if(dp) dp.onclick=async()=>{
+    const id=S.selP;
+    if(!confirm('Remove this pin and everything attached to it?'))return;
+    try{ await placeDel(id); S.selP=null; entryCache.key=null; toast('Pin removed'); render() }
+    catch(e){ toast('Could not remove — '+(e.message||'')) }
+  };
+}
+function wireComposer(t){
+  document.querySelectorAll('.ctab').forEach(el=>el.onclick=()=>{composerKind=el.dataset.k;render()});
+  const save=$('#cSave');
+  if(save) save.onclick=async()=>{
+    if(busy)return;
+    const isNote=composerKind==='note';
+    const val=(isNote?$('#cNote'):$('#cVid')).value.trim();
+    if(!val)return;
+    if(!isNote&&!embedFor(val))return toast('That does not look like a link');
+    busy=true; save.disabled=true;
+    try{
+      await entryAdd(t,isNote?{kind:'note',body:val}:{kind:'video',video_url:val});
+      entryCache.key=null; toast(isNote?'Note added':'Video added'); render();
+    }catch(e){ toast('Could not save — '+(e.message||'')) }
+    busy=false;
+  };
+  const drop=$('#cDrop'), file=$('#cFile');
+  if(drop){
+    drop.onclick=()=>file.click();
+    file.onchange=()=>{ if(file.files.length) uploadMany(t,[...file.files]) };
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});
+    drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+    drop.addEventListener('drop',e=>{
+      e.preventDefault();drop.classList.remove('over');
+      const fs=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+      if(fs.length) uploadMany(t,fs);
+    });
+  }
+}
+async function uploadMany(t,files){
+  if(busy)return; busy=true;
+  const drop=$('#cDrop');
+  let done=0, bytes=0;
+  for(const f of files){
+    if(drop) drop.textContent='Uploading '+(done+1)+' of '+files.length+'…';
+    try{
+      const {path,bytes:b}=await uploadPhoto(f);
+      await entryAdd(t,{kind:'photo',storage_path:path,body:''});
+      done++; bytes+=b;
+    }catch(e){ toast('Upload failed — '+(e.message||'')) }
+  }
+  busy=false; entryCache.key=null;
+  if(done) toast('Added '+done+' photo'+(done===1?'':'s')+' · '+Math.round(bytes/1024)+' KB');
+  render();
+}
+
 /* ===================== sidebar ===================== */
 const bodyEl=$('#body');
 function buildYears(){
@@ -1340,6 +1858,7 @@ function render(){
   renderStats(list);
   document.querySelectorAll('#yrs .yr').forEach(el=>el.classList.toggle('on',S.year===el.dataset.y));
   $('#tsel').textContent=S.year==='all'?(S.selA?S.selA+' only':'All years'):S.year;
+  if(currentTarget()){ renderDetail(); return }
   if(S.tab==='flights')renderFlights(list);
   else if(S.tab==='routes')renderRoutes(list);
   else renderAnalysis(list);
@@ -1362,7 +1881,9 @@ function renderFlights(list){
     const d=dstr(f.date);
     return '<div class="row'+(S.selF===f.id?' sel':'')+'" data-id="'+f.id+'">'+
       '<div class="date"><b>'+d.top+'</b>'+d.bot+'</div>'+
-      '<div><div class="pair">'+f.from+' <i>→</i> '+f.to+'</div>'+
+      '<div><div class="pair">'+
+        '<span class="chip" style="background:'+arcColor(f)+'"></span>'+
+        f.from+' <i>→</i> '+f.to+'</div>'+
       '<div class="al">'+esc(f.airline)+(f.num?' · '+esc(f.num):'')+'</div></div>'+
       '<div class="num">'+fmt(f.miles)+'<s>'+f.dur+'</s></div>'+
       '<div class="acts"><div class="act rt" data-a="rt" title="Add the return leg">⇄</div>'+
@@ -1376,10 +1897,11 @@ function renderFlights(list){
       if(a){e.stopPropagation();
         if(a.dataset.a==='rt')addReturn(f);
         else if(a.dataset.a==='ed')openModal({edit:f.rec,from:f.from,to:f.to,airline:f.airline,
-          date:f.date,num:f.num,cls:f.cls,note:f.note,miles:f.miles,dur:f.dur});
+          date:f.date,num:f.num,cls:f.cls,note:f.note,miles:f.miles,dur:f.dur,color:f.color});
         else if(confirm('Delete '+f.from+' → '+f.to+' on '+f.date+'?'))delFlight(f);
         return}
-      S.selF=(S.selF===f.id)?null:f.id; if(S.selF!==null)focusOn(f); render();
+      S.selF=(S.selF===f.id)?null:f.id; S.selA=null; S.selP=null;
+      if(S.selF!==null)focusOn(f); render();
     };
     r.onmouseenter=()=>S.hoverF=f.id;
     r.onmouseleave=()=>{if(S.hoverF===f.id)S.hoverF=null};
@@ -1445,12 +1967,23 @@ document.querySelectorAll('#ctl [data-mode]').forEach(b=>b.onclick=()=>{
   $('#hint').textContent=(S.mode==='globe'?'DRAG TO ROTATE':'DRAG TO PAN')+
     ' · SCROLL TO ZOOM · CLICK AN AIRPORT · N FOR NEW FLIGHT';
 });
+$('#bPin').onclick=()=>{
+  if(MODE!=='cloud') return toast('Sign in to pin places');
+  if(!CAP.scrapbook) return toast('Run the scrapbook migration first');
+  setPin(!S.pin);
+};
 $('#spin').onclick=()=>{S.spin=!S.spin;$('#spin').classList.toggle('on',S.spin)};
-$('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null;S.year='all';
-  S.airline='all';S.q='';$('#fAir').value='all';$('#fQ').value='';spinTo(30,22);render()};
+$('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null;S.selP=null;
+  S.year='all';S.airline='all';S.q='';$('#fAir').value='all';$('#fQ').value='';
+  setPin(false);spinTo(30,22);render()};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   S.tab=t.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));render()});
 addEventListener('keydown',e=>{
+  if($('#lightbox').classList.contains('show')){
+    if(e.key==='Escape'){$('#lightbox').classList.remove('show');$('#lbImg').src=''}
+    return;
+  }
+  if(pOpen){ if(e.key==='Escape')closePlace(); return }
   if(dOpen){ if(e.key==='Escape')closeClear(); return }
   if(modalOpen){
     if(e.key==='Escape')closeModal();
@@ -1458,7 +1991,10 @@ addEventListener('keydown',e=>{
     return;
   }
   const typing=/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
-  if(e.key==='Escape'){S.selA=null;S.selF=null;render()}
+  if(e.key==='Escape'){
+    if(S.pin){setPin(false);return}
+    S.selA=null;S.selF=null;S.selP=null;render();
+  }
   if(typing)return;
   if(e.key==='n'||e.key==='N'){e.preventDefault();openModal(null)}
   if(e.key===' '){e.preventDefault();$('#spin').click()}
@@ -1516,6 +2052,7 @@ async function enterCloud(){
   entering=(async()=>{
     setStatus('sync','syncing');
     try{
+      await detectCaps();
       let rows=await cloudList();
       if(!rows.length&&LOG.length&&
          confirm('This account has no flights yet.\n\nUpload the '+LOG.length+
@@ -1532,6 +2069,7 @@ async function enterCloud(){
         }
       }
       LOG=rows;
+      if(CAP.scrapbook){ try{ PLACES=await placesList() }catch(e){ console.warn('places',e) } }
       setStatus('ok',LOG.length+' flights synced');
     }catch(e){ syncFail(e) }
     refreshAll();
@@ -1547,7 +2085,8 @@ function wireAuth(){
       if(MODE!=='cloud'){ MODE='cloud'; await enterCloud() }
       hideGate();
     }else{
-      MODE='guest'; LOG=loadLocal(); refreshAll();
+      MODE='guest'; LOG=loadLocal(); PLACES=[]; S.selP=null; entryCache.key=null;
+      signed.clear(); setPin(false); refreshAll();
     }
     updateAccount();
   });

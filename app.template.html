@@ -89,6 +89,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
   color:var(--ink-faint);padding:8px 0 9px;cursor:pointer;border-bottom:1.5px solid transparent;transition:.16s}
 .tab:hover{color:var(--ink-dim)}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+#side.drilled .filters,#side.drilled .tabs{display:none}
 #body{flex:1;overflow-y:auto;overscroll-behavior:contain}
 #body::-webkit-scrollbar{width:8px}
 #body::-webkit-scrollbar-thumb{background:rgba(140,180,215,.16);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
@@ -291,6 +292,8 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 .back{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;
   letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;margin-bottom:12px}
 .back:hover{color:var(--accent)}
+.dkind{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);opacity:.75;margin-bottom:6px}
 .dtitle{font-family:var(--mono);font-size:17px;font-weight:600;letter-spacing:.05em;
   display:flex;align-items:center;gap:8px}
 .dtitle i{color:var(--accent);font-style:normal;font-size:14px}
@@ -400,9 +403,9 @@ body.no-scrapbook #bPin{display:none}
       <input type="text" id="fQ" placeholder="SEARCH">
     </div>
     <div class="tabs">
-      <div class="tab on" data-tab="flights">Flights</div>
-      <div class="tab" data-tab="routes">Routes</div>
-      <div class="tab" data-tab="stats">Analysis</div>
+      <div class="tab on" data-tab="flights" title="Every segment, newest first">Flights</div>
+      <div class="tab" data-tab="routes" title="Airport pairs, ranked by total miles">Routes</div>
+      <div class="tab" data-tab="stats" title="Totals, rankings and records">Analysis</div>
     </div>
     <div id="body"></div>
   </div>
@@ -1726,7 +1729,12 @@ async function renderDetail(){
       (pl.note?'<br>'+esc(pl.note):'')+
       '<br><span class="dact" id="dDelPlace">Remove this pin</span></div>';
   }
-  const shell=(inner)=>'<div class="detail"><div class="back" id="dBack">← Back</div>'+head+'</div>'+inner;
+  const kindLabel = t.flight_id!==undefined&&t.f ? 'Flight'
+                  : t.airport_code ? 'Airport' : 'Pinned place';
+  const shell=(inner)=>'<div class="detail">'+
+    '<div class="back" id="dBack">← Back to '+
+      (S.tab==='routes'?'routes':S.tab==='stats'?'analysis':'flights')+'</div>'+
+    '<div class="dkind">'+kindLabel+' · scrapbook</div>'+head+'</div>'+inner;
 
   if(MODE!=='cloud'){
     bodyEl.innerHTML=shell('<div class="needacct"><b>Scrapbook</b>'+
@@ -1858,7 +1866,12 @@ function render(){
   renderStats(list);
   document.querySelectorAll('#yrs .yr').forEach(el=>el.classList.toggle('on',S.year===el.dataset.y));
   $('#tsel').textContent=S.year==='all'?(S.selA?S.selA+' only':'All years'):S.year;
-  if(currentTarget()){ renderDetail(); return }
+  const drilled=!!currentTarget();
+  /* The tabs and filters only make sense against the list. Leaving them visible
+     while a scrapbook is open makes the highlighted tab look like it describes
+     the panel below it. */
+  $('#side').classList.toggle('drilled',drilled);
+  if(drilled){ renderDetail(); return }
   if(S.tab==='flights')renderFlights(list);
   else if(S.tab==='routes')renderRoutes(list);
   else renderAnalysis(list);

@@ -116,6 +116,18 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.62) sepia(.3)
 .act.rt:hover{color:#0d1620;background:var(--accent)}
 .act.del:hover{color:#fff;background:rgba(255,90,74,.75)}
 
+.trip{padding:12px 18px;border-bottom:1px solid rgba(140,180,215,.07);cursor:pointer;transition:.14s}
+.trip:hover{background:rgba(247,191,98,.07)}
+.thead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tname{font-size:13.5px;font-weight:600;letter-spacing:.01em}
+.tname em{font-style:normal;font-family:var(--mono);font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-faint);margin-left:7px;opacity:.8}
+.tdots{display:flex;gap:4px;flex:none}
+.tchain{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-top:6px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:3px;line-height:1.7}
+.tchain i{color:var(--accent);font-style:normal;font-size:9px;opacity:.7;margin:0 1px}
+.tmeta{display:flex;justify-content:space-between;gap:10px;margin-top:6px;
+  font-family:var(--mono);font-size:9.5px;color:var(--ink-faint)}
 .sec{padding:16px 18px;border-bottom:1px solid rgba(140,180,215,.07)}
 .sec>.lbl{margin-bottom:11px}
 .bar{display:grid;grid-template-columns:104px 1fr 52px;gap:9px;align-items:center;margin-bottom:7px}
@@ -404,6 +416,7 @@ body.no-scrapbook #bPin{display:none}
     </div>
     <div class="tabs">
       <div class="tab on" data-tab="flights" title="Every segment, newest first">Flights</div>
+      <div class="tab" data-tab="trips" title="Flights grouped into journeys">Trips</div>
       <div class="tab" data-tab="routes" title="Airport pairs, ranked by total miles">Routes</div>
       <div class="tab" data-tab="stats" title="Totals, rankings and records">Analysis</div>
     </div>
@@ -622,14 +635,16 @@ function makeClient(){
    only for rows that live in Postgres; guest rows are id-less. */
 const fromRow=r=>({id:r.id,date:r.flown_on,from:r.from_code,to:r.to_code,airline:r.airline||'',
   num:r.flight_no||'',miles:r.miles||0,dur:r.duration||'',cls:r.cabin||'',note:r.note||'',
-  color:r.color||''});
+  color:r.color||'',trip:r.trip||''});
 /* The scrapbook migration may not have been run yet against a given project.
    Detect what is actually there rather than writing columns that do not exist,
    which would otherwise break adding a flight the moment this ships. */
-const CAP={color:true,scrapbook:true};
+const CAP={color:true,trip:true,scrapbook:true};
 async function detectCaps(){
   try{ const {error}=await sb.from('flights').select('color').limit(1); CAP.color=!error }
   catch(e){ CAP.color=false }
+  try{ const {error}=await sb.from('flights').select('trip').limit(1); CAP.trip=!error }
+  catch(e){ CAP.trip=false }
   try{ const {error}=await sb.from('places').select('id').limit(1); CAP.scrapbook=!error }
   catch(e){ CAP.scrapbook=false }
   document.body.classList.toggle('no-scrapbook',!CAP.scrapbook);
@@ -639,6 +654,7 @@ const toRow=(r,uid)=>{
     airline:r.airline||'',flight_no:r.num||'',miles:r.miles||null,duration:r.dur||'',
     cabin:r.cls||'',note:r.note||''};
   if(CAP.color) row.color=r.color||'';
+  if(CAP.trip)  row.trip=r.trip||'';
   return row;
 };
 
@@ -839,10 +855,83 @@ function rebuild(){
     const mins=parseDur(r.dur)??estMins(mi);
     return {id:i,rec:r,from:r.from,to:r.to,a,b,airline:r.airline||'—',miles:mi,mins,
       dur:hhmm(mins),date:r.date,year:+r.date.slice(0,4),num:r.num||'',cls:r.cls||'',note:r.note||'',
-      color:r.color||'',path:gcPath(a.lon,a.lat,b.lon,b.lat,140),phase:(i*0.137)%1};
+      color:r.color||'',trip:r.trip||'',
+      path:gcPath(a.lon,a.lat,b.lon,b.lat,140),phase:(i*0.137)%1};
   });
+  TRIPS=buildTrips(FLIGHTS);
+  for(const t of TRIPS) for(const f of t.legs){ f.tripName=t.name; f.tripKey=t.key }
   CACHE.key='';
 }
+/* ---------- trips ----------
+   A trip is a chain of flights that leaves an airport and eventually comes
+   back to it: SFO->DUB->SFO is one trip, and the next departure from SFO
+   starts another. A name written on the flights (from a CSV Trip column, or a
+   rename here) overrides the inference. */
+let TRIPS=[];
+const dayDiff=(a,b)=>Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);
+function chainOf(legs){
+  const out=[legs[0].from];
+  for(const f of legs){ if(out[out.length-1]!==f.from) out.push(f.from); out.push(f.to) }
+  return out;
+}
+function makeTrip(name,legs){
+  const origin=legs[0].a;
+  let far=legs[0].b, fd=-1;
+  for(const f of legs) for(const ap of [f.a,f.b]){
+    const d=haversine(origin,ap);
+    if(d>fd){fd=d;far=ap}
+  }
+  return {
+    key: name? 'n:'+name : 'a:'+legs[0].date+':'+legs[0].from,
+    name: name || (far.c||far.n||far.code||'Trip'),
+    explicit: !!name, legs,
+    miles: legs.reduce((s,f)=>s+f.miles,0),
+    mins:  legs.reduce((s,f)=>s+f.mins,0),
+    start: legs[0].date, end: legs[legs.length-1].date,
+    chain: chainOf(legs)
+  };
+}
+function buildTrips(all){
+  const sorted=[...all].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
+  const named={}, loose=[];
+  for(const f of sorted){ if(f.trip) (named[f.trip]=named[f.trip]||[]).push(f); else loose.push(f) }
+  const auto=[]; let cur=null;
+  for(const f of loose){
+    if(cur){
+      const prev=cur.legs[cur.legs.length-1];
+      /* 35 days: the longest genuine stopover in a real log sits near 28, while
+         the shortest false link (getting home, then leaving again weeks later
+         from the same airport) sits near 49. */
+      if(f.from===prev.to && dayDiff(prev.date,f.date)<=35){
+        cur.legs.push(f);
+        if(f.to===cur.origin){ auto.push(cur); cur=null }
+        continue;
+      }
+      auto.push(cur); cur=null;
+    }
+    cur={origin:f.from,legs:[f]};
+    if(f.to===f.from){ auto.push(cur); cur=null }
+  }
+  if(cur) auto.push(cur);
+  const trips=Object.keys(named).map(k=>makeTrip(k,named[k]))
+    .concat(auto.map(g=>makeTrip(null,g.legs)));
+  trips.sort((a,b)=> a.start<b.start?1:a.start>b.start?-1:0);
+  return trips;
+}
+const tripNameOf=f=>f.tripName||'';
+async function setTripName(trip,name){
+  const clean=(name||'').trim();
+  for(const f of trip.legs) f.rec.trip=clean;
+  saveLocal(); refreshAll();
+  if(MODE!=='cloud')return;
+  if(!CAP.trip){ toast('Run the latest migration to keep trip names'); return }
+  setStatus('sync','saving');
+  try{
+    await Promise.all(trip.legs.filter(f=>f.rec.id).map(f=>cloudUpdate(f.rec)));
+    await resync();
+  }catch(e){ syncFail(e) }
+}
+
 function gcPath(lon1,lat1,lon2,lat2,n){
   const v1=toVec(lon1,lat1),v2=toVec(lon2,lat2);
   const dot=Math.max(-1,Math.min(1,v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]));
@@ -865,7 +954,7 @@ const cv=$('#cv'), ctx=cv.getContext('2d');
 let W=0,H=0,DPR=1;
 const S={mode:'globe',spin:true,drag:false,rot:[30,22],zoom:1,mzoom:1,mpan:[0,0],tween:null,
   year:'all',airline:'all',q:'',tab:'flights',hoverF:null,selF:null,hoverA:null,selA:null,
-  hoverP:null,selP:null,pin:false,mouse:null};
+  hoverP:null,selP:null,selT:null,pin:false,mouse:null};
 let SCREEN={};
 function resize(){DPR=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;
   cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
@@ -1175,13 +1264,14 @@ function shortest(a,b){let d=(b-a)%360;if(d>180)d-=360;if(d<-180)d+=360;return d
 /* ===================== filtering ===================== */
 let CACHE={key:'',val:null};
 function filtered(){
-  const key=[S.year,S.airline,S.q,S.selA,LOG.length].join('|');
+  const key=[S.year,S.airline,S.q,S.selA,S.selT,LOG.length].join('|');
   if(CACHE.key===key)return CACHE.val;
   const q=S.q.trim().toUpperCase();
   const list=FLIGHTS.filter(f=>{
     if(S.year!=='all'&&f.year!==+S.year)return false;
     if(S.airline!=='all'&&f.airline!==S.airline)return false;
     if(S.selA&&f.from!==S.selA&&f.to!==S.selA)return false;
+    if(S.selT&&f.tripKey!==S.selT)return false;
     if(q){const hay=(f.from+' '+f.to+' '+f.airline+' '+f.date+' '+f.num+' '+f.a.c+' '+f.b.c+' '+f.a.co+' '+f.b.co+' '+f.note).toUpperCase();
       if(!hay.includes(q))return false}
     return true;
@@ -1252,9 +1342,9 @@ function clickAt(){
     openPlace(ll[0],ll[1]);
     return;
   }
-  if(S.hoverP){S.selP=(S.selP===S.hoverP)?null:S.hoverP;S.selA=null;S.selF=null;render();return}
-  if(S.hoverA){S.selA=(S.selA===S.hoverA)?null:S.hoverA;S.selF=null;S.selP=null;render();return}
-  if(S.selA||S.selF!==null||S.selP){S.selA=null;S.selF=null;S.selP=null;render()}
+  if(S.hoverP){S.selP=(S.selP===S.hoverP)?null:S.hoverP;S.selA=null;S.selF=null;S.selT=null;render();return}
+  if(S.hoverA){S.selA=(S.selA===S.hoverA)?null:S.hoverA;S.selF=null;S.selP=null;S.selT=null;render();return}
+  if(S.selA||S.selF!==null||S.selP||S.selT){S.selA=null;S.selF=null;S.selP=null;S.selT=null;render()}
 }
 function setPin(on){
   S.pin=on;
@@ -1511,7 +1601,7 @@ function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace
 function exportCSV(){
   const rows=[CSV_COLS.join(',')];
   for(const f of FLIGHTS) rows.push([f.date,f.from,f.to,f.num,f.airline,f.miles,f.dur,'','',
-    f.cls,'','','','',f.note,f.color].map(csvCell).join(','));
+    f.cls,'','','',tripNameOf(f),f.note,f.color].map(csvCell).join(','));
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1538,7 +1628,8 @@ function importCSV(text){
   const head=rows[0].map(h=>h.trim().toLowerCase());
   const ix=n=>head.indexOf(n);
   const iD=ix('date'),iF=ix('from'),iT=ix('to'),iA=ix('airline'),iN=ix('flight_number'),
-        iM=ix('distance'),iU=ix('duration'),iC=ix('class'),iNo=ix('note'),iCol=ix('color');
+        iM=ix('distance'),iU=ix('duration'),iC=ix('class'),iNo=ix('note'),iCol=ix('color'),
+        iTr=ix('trip');
   if(iD<0||iF<0||iT<0)return toast('Not an OpenFlights CSV');
   const add=[];let skipped=0;
   for(const r of rows.slice(1)){
@@ -1549,7 +1640,8 @@ function importCSV(text){
     add.push({date,from,to,airline:(r[iA]||'').trim(),num:iN>=0?(r[iN]||'').trim():'',
       miles:Number.isFinite(mi)&&mi>0?mi:Math.round(haversine(apOf(from),apOf(to))),
       dur:iU>=0?(r[iU]||'').trim():'',cls:iC>=0?(r[iC]||'').trim():'',
-      note:iNo>=0?(r[iNo]||'').trim():'',color:iCol>=0?(r[iCol]||'').trim():''});
+      note:iNo>=0?(r[iNo]||'').trim():'',color:iCol>=0?(r[iCol]||'').trim():'',
+      trip:iTr>=0?(r[iTr]||'').trim():''});
   }
   if(!add.length)return toast('No usable rows'+(skipped?' ('+skipped+' skipped)':''));
   const replace=confirm(add.length+' flights found.\n\nOK = replace the current log\nCancel = merge into it');
@@ -1866,6 +1958,7 @@ function render(){
   renderStats(list);
   document.querySelectorAll('#yrs .yr').forEach(el=>el.classList.toggle('on',S.year===el.dataset.y));
   $('#tsel').textContent=S.year==='all'?(S.selA?S.selA+' only':'All years'):S.year;
+  if(S.selT){ $('#side').classList.add('drilled'); renderTripDetail(); return }
   const drilled=!!currentTarget();
   /* The tabs and filters only make sense against the list. Leaving them visible
      while a scrapbook is open makes the highlighted tab look like it describes
@@ -1873,6 +1966,7 @@ function render(){
   $('#side').classList.toggle('drilled',drilled);
   if(drilled){ renderDetail(); return }
   if(S.tab==='flights')renderFlights(list);
+  else if(S.tab==='trips')renderTrips(list);
   else if(S.tab==='routes')renderRoutes(list);
   else renderAnalysis(list);
 }
@@ -1920,6 +2014,74 @@ function renderFlights(list){
     r.onmouseleave=()=>{if(S.hoverF===f.id)S.hoverF=null};
   });
 }
+function renderTrips(list){
+  const shown=new Set(list.map(f=>f.id));
+  const trips=TRIPS.filter(t=>t.legs.some(f=>shown.has(f.id)));
+  if(!trips.length){bodyEl.innerHTML='<div class="empty">NO TRIPS MATCH</div>';return}
+  bodyEl.innerHTML='<div class="sec" style="border:0;padding-bottom:6px"><div class="lbl">'+
+    trips.length+' trip'+(trips.length===1?'':'s')+' · grouped by where each chain returns</div></div>'+
+    trips.map(t=>{
+      const days=Math.max(1,dayDiff(t.start,t.end)+1);
+      const dots=[...new Set(t.legs.map(f=>arcColor(f)))].slice(0,6)
+        .map(c=>'<span class="chip" style="background:'+c+'"></span>').join('');
+      return '<div class="trip" data-k="'+esc(t.key)+'">'+
+        '<div class="thead"><div class="tname">'+esc(t.name)+
+          (t.explicit?'':'<em>auto</em>')+'</div><div class="tdots">'+dots+'</div></div>'+
+        '<div class="tchain">'+t.chain.map(c=>'<span>'+c+'</span>').join('<i>→</i>')+'</div>'+
+        '<div class="tmeta"><span>'+t.start+(t.end!==t.start?' → '+t.end:'')+'</span>'+
+        '<span>'+t.legs.length+' leg'+(t.legs.length===1?'':'s')+' · '+fmt(t.miles)+' mi · '+
+        days+' day'+(days===1?'':'s')+'</span></div></div>';
+    }).join('');
+  bodyEl.querySelectorAll('.trip').forEach(el=>el.onclick=()=>{
+    S.selT=el.dataset.k; S.selF=null; S.selA=null; S.selP=null;
+    const t=TRIPS.find(x=>x.key===S.selT);
+    if(t&&S.mode==='globe') focusOn(t.legs[Math.floor(t.legs.length/2)]);
+    render();
+  });
+}
+
+function renderTripDetail(){
+  const t=TRIPS.find(x=>x.key===S.selT);
+  if(!t){S.selT=null;render();return}
+  const days=Math.max(1,dayDiff(t.start,t.end)+1);
+  const aps=new Set(), cos=new Set();
+  for(const f of t.legs){aps.add(f.from);aps.add(f.to);cos.add(f.a.co);cos.add(f.b.co)}
+  bodyEl.innerHTML=
+    '<div class="detail"><div class="back" id="tBack">← Back to trips</div>'+
+    '<div class="dkind">Trip'+(t.explicit?'':' · auto-grouped')+'</div>'+
+    '<div class="dtitle" id="tName" title="Click to rename">'+esc(t.name)+'</div>'+
+    '<div class="dsub">'+t.start+(t.end!==t.start?' → '+t.end:'')+' · '+days+' day'+(days===1?'':'s')+'<br>'+
+      t.legs.length+' leg'+(t.legs.length===1?'':'s')+' · '+fmt(t.miles)+' mi · '+hrs(t.mins)+' · '+
+      aps.size+' airports · '+cos.size+' countr'+(cos.size===1?'y':'ies')+
+      '<br><span class="dact" id="tRename">Rename this trip</span>'+
+      (t.explicit?' · <span class="dact" id="tAuto">Back to automatic</span>':'')+
+    '</div></div>'+
+    '<div class="entries" style="padding-top:4px">'+
+    t.legs.map(f=>{
+      const d=dstr(f.date);
+      return '<div class="row" style="padding:9px 0;border:0" data-id="'+f.id+'">'+
+        '<div class="date"><b>'+d.top+'</b>'+d.bot+'</div>'+
+        '<div><div class="pair"><span class="chip" style="background:'+arcColor(f)+'"></span>'+
+          f.from+' <i>→</i> '+f.to+'</div><div class="al">'+esc(f.airline)+'</div></div>'+
+        '<div class="num">'+fmt(f.miles)+'<s>'+f.dur+'</s></div></div>';
+    }).join('')+'</div>';
+  $('#tBack').onclick=()=>{S.selT=null;render()};
+  const doRename=()=>{
+    const v=prompt('Name this trip', t.name);
+    if(v===null)return;
+    setTripName(t, v.trim());
+  };
+  $('#tName').onclick=doRename;
+  $('#tRename').onclick=doRename;
+  const auto=$('#tAuto');
+  if(auto) auto.onclick=()=>setTripName(t,'');
+  bodyEl.querySelectorAll('.row[data-id]').forEach(r=>r.onclick=()=>{
+    const f=FLIGHTS.find(x=>x.id===+r.dataset.id);
+    if(!f)return;
+    S.selT=null; S.selF=f.id; focusOn(f); render();
+  });
+}
+
 function renderRoutes(list){
   const m={};
   for(const f of list){
@@ -1986,7 +2148,7 @@ $('#bPin').onclick=()=>{
   setPin(!S.pin);
 };
 $('#spin').onclick=()=>{S.spin=!S.spin;$('#spin').classList.toggle('on',S.spin)};
-$('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null;S.selP=null;
+$('#reset').onclick=()=>{S.zoom=1;S.mzoom=1;S.mpan=[0,0];S.selA=null;S.selF=null;S.selP=null;S.selT=null;
   S.year='all';S.airline='all';S.q='';$('#fAir').value='all';$('#fQ').value='';
   setPin(false);spinTo(30,22);render()};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
@@ -2006,7 +2168,7 @@ addEventListener('keydown',e=>{
   const typing=/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   if(e.key==='Escape'){
     if(S.pin){setPin(false);return}
-    S.selA=null;S.selF=null;S.selP=null;render();
+    S.selA=null;S.selF=null;S.selP=null;S.selT=null;render();
   }
   if(typing)return;
   if(e.key==='n'||e.key==='N'){e.preventDefault();openModal(null)}

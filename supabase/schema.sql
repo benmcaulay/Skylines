@@ -215,3 +215,9 @@ create policy "update own media" on storage.objects for update to authenticated
   using (bucket_id = 'scrapbook' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "delete own media" on storage.objects for delete to authenticated
   using (bucket_id = 'scrapbook' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ------------------------------------------------------------- trips
+-- Trips are derived from the flight chain by default; this column only holds
+-- a name once you override the automatic grouping.
+alter table public.flights add column if not exists trip text not null default '';
+create index if not exists flights_trip_idx on public.flights (user_id, trip) where trip <> '';
